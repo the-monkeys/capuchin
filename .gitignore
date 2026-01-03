@@ -1,0 +1,73 @@
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS Generated
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+
+# Node / Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+.npm/
+
+# Go / Backend
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Go workspace file
+go.work
+
+# Validated env files
+.env
+.env.production
+.env.development
+.env.test
+
+# Build artifacts
+build/
+bin/
+tmp/
+
+# Go Coverage
+coverage.txt
+coverage.html
+
+
+# .gitignore file at the root of your project
+/node_modules
+
+# Backend specific ignores (in a 'backend' folder)
+backend/venv/
+backend/build/
+
+# Frontend specific ignores (in a 'frontend' folder)
+frontend/node_modules/
