@@ -32,13 +32,14 @@ dist-ssr/
 *.local
 .npm/
 
-# Go / Backend
-# Binaries
+# Go (Backend)
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
+*.test
+*.out
 
 # Test binary, built with `go test -c`
 *.test
@@ -57,17 +58,14 @@ build/
 bin/
 tmp/
 
-# Go Coverage
-coverage.txt
-coverage.html
-
-
 # .gitignore file at the root of your project
-/node_modules
+frontend/node_modules
 
 # Backend specific ignores (in a 'backend' folder)
-backend/venv/
 backend/build/
 
 # Frontend specific ignores (in a 'frontend' folder)
 frontend/node_modules/
+
+# personal 
+docs/ideas.md
