@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // path to db
@@ -60,6 +61,8 @@ func main() {
 			return
 		}
 
+		newTodo.ID = uuid.New().String()
+
 		// Add to the list
 		todos = append(todos, newTodo)
 		store.Save(dbPath, todos) // Save
@@ -103,7 +106,7 @@ func main() {
 		c.JSON(404, gin.H{"message": "Todo not found"})
 	})
 
-	r.Run()
+	r.Run(":8080")
 }
 
 func saveTodos() {
