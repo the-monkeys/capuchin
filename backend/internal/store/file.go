@@ -4,19 +4,23 @@ import (
 	"encoding/json"
 	"os"
 
-	"capuchin/internal/models" // Import our new models package
+	"capuchin/internal/models" // Import our models package
 )
 
 // Load reads the file and returns the list of todos
 func Load(filePath string) ([]models.Todo, error) {
+
+	// Define a list of todos
 	var todos []models.Todo
 
+	// Read the db file
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		// If file doesn't exist, generic error, return empty list
 		return []models.Todo{}, nil
 	}
 
+	// Unmarshal the data
 	err = json.Unmarshal(data, &todos)
 	return todos, err
 }

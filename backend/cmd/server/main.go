@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"os"
 
+	"sync"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -17,6 +19,7 @@ const dbPath = "../../db/db.json"
 
 // create a list of todos imported from models/todo.go
 var todos []models.Todo
+var mu sync.RWMutex
 
 func main() {
 	// Load data from disk on startup
@@ -48,6 +51,8 @@ func main() {
 
 	// route to return  list of todos
 	r.GET("/todos", func(c *gin.Context) {
+		mu.RLock()
+		defer mu.RUnlock()
 		c.JSON(200, todos)
 	})
 
@@ -64,8 +69,11 @@ func main() {
 		newTodo.ID = uuid.New().String()
 
 		// Add to the list
+		mu.Lock()
 		todos = append(todos, newTodo)
 		store.Save(dbPath, todos) // Save
+		mu.Unlock()
+
 		// Respond with the created item
 		c.JSON(http.StatusOK, newTodo)
 	})
@@ -73,6 +81,10 @@ func main() {
 	// PATCH /todos/:id - Toggle "completed" status
 	r.PATCH("/todos/:id", func(c *gin.Context) {
 		id := c.Param("id") // Get the ID from the URL
+
+		mu.Lock()
+		defer mu.Unlock()
+
 		// Iterate through the list to find the item
 		for i, t := range todos {
 			if t.ID == id {
@@ -92,6 +104,10 @@ func main() {
 	// DELETE /todos/:id - Delete an item
 	r.DELETE("/todos/:id", func(c *gin.Context) {
 		id := c.Param("id")
+
+		mu.Lock()
+		defer mu.Unlock()
+
 		for i, t := range todos {
 			if t.ID == id {
 				// Delete: Append everything AFTER index i to everything BEFORE index i
