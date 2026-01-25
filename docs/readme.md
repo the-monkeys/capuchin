@@ -150,3 +150,22 @@ ctrl+c or cmd+c
 * **React:** Functional Components, Hooks, API Integration (fetch, async/await), Controlled Inputs.
 * **Docker:** Multi-stage builds, Scratch images, Docker Compose overrides.
 * **General:** REST API Design, CORS, JSON Persistence, Refactoring,TypeScript(for styling), axios (for API calls)
+
+
+Plans for v1:
+auth
+real db
+mcp server
+
+Long term plans:folder todo
+collaborators
+real time update
+organization
+authentication
+groups and access
+sharelink
+auth login
+schedule with reminder
+version control
+mcp server
+
