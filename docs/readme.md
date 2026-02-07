@@ -110,6 +110,8 @@ We support two modes: **Development** (Hot-Reload) and **Production** (Lean Stat
 #### <u >Development Mode</u >
 Runs the backend with `Air` (Go hot-reload) and Frontend with `Vite` (HMR). Changes to code are reflected instantly.
 
+🔴 Hot reload not working yet (for backend)
+
 ```bash
 make dev
 # OR
@@ -152,16 +154,16 @@ ctrl+c or cmd+c
 * **General:** REST API Design, CORS, JSON Persistence, Refactoring,TypeScript(for styling), axios (for API calls)
 
 
-Plans for v1:
-auth
-real db
-mcp server
+# **Plans for v1:**
+authentication
+postgres db (with ORM?)
+units and sub-units (folders)
 
-Long term plans:folder todo
+# **Long term plans:**
+mcp server
 collaborators
 real time update
 organization
-authentication
 groups and access
 sharelink
 auth login
