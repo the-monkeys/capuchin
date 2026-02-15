@@ -15,4 +15,4 @@ services:
       - /app/node_modules
     command: npm run dev -- --host
     ports:
-      - "${CLIENT_PORT:-8000}:5173"
+      - "${CLIENT_PORT:-5173}:5173"
