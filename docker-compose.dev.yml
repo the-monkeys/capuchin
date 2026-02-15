@@ -6,7 +6,6 @@ services:
       - ./backend:/app
     environment:
       - MODE=dev
-    # Air will be the command as defined in Dockerfile dev stage
 
   frontend:
     build:
@@ -15,5 +14,3 @@ services:
       - ./frontend:/app
       - /app/node_modules
     command: npm run dev -- --host
-    ports:
-      - "5173:5173"

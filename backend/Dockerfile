@@ -1,11 +1,13 @@
-# Build Stage
-FROM golang:1.25.5-alpine AS builder
+FROM golang:1.25.5-alpine AS deps
 
 WORKDIR /app
 
 # Download dependencies
 COPY go.mod go.sum ./
 RUN go mod download
+
+# Build Stage
+FROM deps AS builder
 
 # Copy source code
 COPY . .
@@ -15,8 +17,10 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o server cmd/server/main.go
 
 # Development Stage
-FROM builder AS dev
+FROM deps AS dev
+
 RUN go install github.com/air-verse/air@latest
+
 CMD ["air", "-c", "air.toml"]
 
 
