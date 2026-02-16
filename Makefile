@@ -8,7 +8,7 @@ endif
 
 # Docker Dev Mode (Hot Reload)
 dev:
-	$(CONTAINER_RUNTIME) compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
+	$(CONTAINER_RUNTIME) compose --env-file .env.example -f compose-dev.yml up --build -d
 
 logs:
 	$(CONTAINER_RUNTIME) compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
