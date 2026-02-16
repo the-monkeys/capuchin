@@ -5,9 +5,6 @@ import (
 	"capuchin/internal/store"
 	"net/http"
 
-	"encoding/json"
-	"os"
-
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -123,9 +120,4 @@ func main() {
 	})
 
 	r.Run(":8080")
-}
-
-func saveTodos() {
-	data, _ := json.MarshalIndent(todos, "", "  ") // Pretty print JSON
-	os.WriteFile(dbPath, data, 0644)
 }
