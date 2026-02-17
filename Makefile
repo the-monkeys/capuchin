@@ -10,19 +10,22 @@ endif
 dev:
 	$(CONTAINER_RUNTIME) compose --env-file .env.example -f compose-dev.yml up --build -d
 
-logs:
-	$(CONTAINER_RUNTIME) compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
+dev-logs: 
+	$(CONTAINER_RUNTIME) compose -f compose-dev.yml logs 
 
 dev-down:
-	$(CONTAINER_RUNTIME) compose -f docker-compose.yml -f docker-compose.dev.yml down
+	$(CONTAINER_RUNTIME) compose -f compose-dev.yml down
 
-# Docker Production Mode
+
 prod:
-	$(CONTAINER_RUNTIME) compose up --build
+	$(CONTAINER_RUNTIME) compose --env-file .env -f compose.yml up
 
-# Stop Containers
+logs:
+	$(CONTAINER_RUNTIME) compose -f compose.yml logs -f
+
 down:
-	$(CONTAINER_RUNTIME) compose down
+	$(CONTAINER_RUNTIME) compose -f compose.yml down
+
 
 frontend:
 	cd frontend && npm run dev
@@ -30,5 +33,5 @@ frontend:
 backend:
 	cd backend && air
 
-.PHONY: frontend backend dev prod down
+.PHONY:  dev dev-logs dev-down prod logs down
 

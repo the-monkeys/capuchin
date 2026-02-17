@@ -5,10 +5,12 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
+
+	_ "github.com/lib/pq"
 )
 
 func NewConnection() (*sql.DB, error) {
-	dsn := fmt.Sprintf("host=%s dbname=%s user=%s password=%s", config.Config.POSTGRES_HOST, config.Config.POSTGRES_DB, config.Config.POSTGRES_USER, config.Config.POSTGRES_PASSWORD)
+	dsn := fmt.Sprintf("host=%s dbname=%s user=%s password=%s sslmode=disable", config.Config.POSTGRES_HOST, config.Config.POSTGRES_DB, config.Config.POSTGRES_USER, config.Config.POSTGRES_PASSWORD)
 
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
