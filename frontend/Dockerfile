@@ -4,15 +4,14 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 
-RUN npm install
+RUN npm ci
 
 
 # Build Stage
-FROM node:24-alpine AS builder
+FROM deps AS builder
 
 WORKDIR /app
 
-COPY --from=deps /app/node_modules .
 COPY . .
 
 # Build the application
