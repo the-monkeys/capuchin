@@ -1,0 +1,68 @@
+# EditorConfig helps maintain consistent coding styles across different editors.
+
+root = true
+
+# Global defaults (all files)
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Go (backend)
+[*.go]
+indent_style = tab
+indent_size = 4
+
+# TypeScript / JavaScript / React (frontend)
+[*.{ts,tsx,js,jsx}]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# CSS / SCSS
+[*.{css,scss}]
+indent_style = space
+indent_size = 2
+
+# HTML
+[*.html]
+indent_style = space
+indent_size = 2
+
+# JSON / Config files
+[*.{json,jsonc}]
+indent_style = space
+indent_size = 2
+
+# YAML
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# Markdown
+[*.md]
+trim_trailing_whitespace = false
+insert_final_newline = true
+
+# Makefile
+# make requires hard tabs
+[Makefile]
+indent_style = tab
+
+# Dockerfile
+[Dockerfile*]
+indent_style = space
+indent_size = 4
+
+# .env files
+[.env*]
+insert_final_newline = true
+trim_trailing_whitespace = false
+
+# TOML
+[*.toml]
+indent_style = space
+indent_size = 2
