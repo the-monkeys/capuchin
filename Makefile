@@ -15,6 +15,8 @@ dev-logs:
 
 dev-down:
 	$(CONTAINER_RUNTIME) compose -f compose-dev.yml down
+clean:
+	$(CONTAINER_RUNTIME) compose -f compose-dev.yml down --volumes --remove-orphans --rmi all
 
 
 prod:
