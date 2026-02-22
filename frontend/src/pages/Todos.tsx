@@ -6,35 +6,51 @@ interface Todo {
   item: string;
   completed: boolean;
 }
+// For unauthenticated users, we'll store todos in localStorage under this key
+const LOCAL_STORAGE_KEY = "capuchin_guest_todos"
+
+// Simple UUID generator for guest todos
+const genId = () => crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)
 
 const MonkeyLogo = () => (
   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="5.5" cy="17" rx="4" ry="4.5" fill="#111"/>
-    <ellipse cx="5.5" cy="17" rx="2.2" ry="2.8" fill="#c2855a"/>
-    <ellipse cx="26.5" cy="17" rx="4" ry="4.5" fill="#111"/>
-    <ellipse cx="26.5" cy="17" rx="2.2" ry="2.8" fill="#c2855a"/>
-    <ellipse cx="16" cy="15" rx="11" ry="11" fill="#111"/>
-    <ellipse cx="16" cy="18" rx="7" ry="6" fill="#c2855a"/>
-    <circle cx="12.5" cy="13" r="2.2" fill="white"/>
-    <circle cx="19.5" cy="13" r="2.2" fill="white"/>
-    <circle cx="13" cy="13.4" r="1.1" fill="#111"/>
-    <circle cx="20" cy="13.4" r="1.1" fill="#111"/>
-    <circle cx="13.4" cy="13" r="0.4" fill="white"/>
-    <circle cx="20.4" cy="13" r="0.4" fill="white"/>
-    <ellipse cx="16" cy="16.5" rx="2" ry="1.4" fill="#8a5c3a"/>
-    <circle cx="15.1" cy="16.3" r="0.5" fill="#5a3520"/>
-    <circle cx="16.9" cy="16.3" r="0.5" fill="#5a3520"/>
-    <path d="M13.5 19.5 Q16 21.5 18.5 19.5" stroke="#8a5c3a" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
-    <path d="M10 8 Q16 3 22 8" stroke="#111" strokeWidth="3" strokeLinecap="round" fill="none"/>
+    <ellipse cx="5.5" cy="17" rx="4" ry="4.5" fill="#111" />
+    <ellipse cx="5.5" cy="17" rx="2.2" ry="2.8" fill="#c2855a" />
+    <ellipse cx="26.5" cy="17" rx="4" ry="4.5" fill="#111" />
+    <ellipse cx="26.5" cy="17" rx="2.2" ry="2.8" fill="#c2855a" />
+    <ellipse cx="16" cy="15" rx="11" ry="11" fill="#111" />
+    <ellipse cx="16" cy="18" rx="7" ry="6" fill="#c2855a" />
+    <circle cx="12.5" cy="13" r="2.2" fill="white" />
+    <circle cx="19.5" cy="13" r="2.2" fill="white" />
+    <circle cx="13" cy="13.4" r="1.1" fill="#111" />
+    <circle cx="20" cy="13.4" r="1.1" fill="#111" />
+    <circle cx="13.4" cy="13" r="0.4" fill="white" />
+    <circle cx="20.4" cy="13" r="0.4" fill="white" />
+    <ellipse cx="16" cy="16.5" rx="2" ry="1.4" fill="#8a5c3a" />
+    <circle cx="15.1" cy="16.3" r="0.5" fill="#5a3520" />
+    <circle cx="16.9" cy="16.3" r="0.5" fill="#5a3520" />
+    <path d="M13.5 19.5 Q16 21.5 18.5 19.5" stroke="#8a5c3a" strokeWidth="1.2" strokeLinecap="round" fill="none" />
+    <path d="M10 8 Q16 3 22 8" stroke="#111" strokeWidth="3" strokeLinecap="round" fill="none" />
   </svg>
 )
-
+// Simple checkmark icon for completed tasks
 const CheckIcon = () => (
   <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-    <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 )
 
+// localStorage helpers for unauthenticated user
+const loadGuestTodos = (): Todo[] => {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+// Save guest todos to localStorage
+const saveGuestTodos = (todos: Todo[]) => {
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(todos))
+}
 export default function Todos() {
   const [todos, setTodos] = useState<Todo[]>([])
   const [inputValue, setInputValue] = useState("")
@@ -46,11 +62,9 @@ export default function Todos() {
 
   const token = localStorage.getItem("token")
   const isAuthed = Boolean(token)
-  const API_URL = isAuthed
-    ? "http://localhost:8080/user/todos"
-    : "http://localhost:8080/todos"
+  const API_BASE = "http://localhost:8080/user/todos"
 
-  // Decode email from JWT payload 
+  // Decode email from JWT payload
   const userEmail = (() => {
     if (!token) return null
     try {
@@ -61,32 +75,54 @@ export default function Todos() {
 
   const authHeaders = (): HeadersInit => ({
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    Authorization: `Bearer ${token}`,
   })
 
-  // Coerce server response — handles numeric id from Postgres and string id from JSON store
   const normalise = (raw: any): Todo => ({
     id: String(raw.id ?? raw.ID),
     item: raw.item ?? raw.Item ?? "",
     completed: raw.completed ?? raw.Completed ?? false,
   })
-
   const handleLogout = () => {
     localStorage.removeItem("token")
     navigate("/login")
   }
 
+  // Helper: update state + persist guest todos
+  const updateGuest = (updater: (prev: Todo[]) => Todo[]) => {
+    setTodos(prev => {
+      const next = updater(prev)
+      saveGuestTodos(next)
+      return next
+    })
+  }
+
+  // Load todos 
   useEffect(() => {
-    fetch(API_URL, { headers: authHeaders() })
+    if (!isAuthed) {
+      setTodos(loadGuestTodos())
+      setLoading(false)
+      return
+    }
+    fetch(API_BASE, { headers: authHeaders() })
       .then(res => res.json())
       .then(data => { setTodos((data || []).map(normalise)); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
-// add new todos
+
+  // Add todo
   const addTodo = async () => {
     if (!inputValue.trim()) return
+
+    if (!isAuthed) {
+      const newTodo: Todo = { id: genId(), item: inputValue.trim(), completed: false }
+      updateGuest(prev => [...prev, newTodo])
+      setInputValue("")
+      return
+    }
+
     try {
-      const res = await fetch(API_URL, {
+      const res = await fetch(API_BASE, {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify({ item: inputValue, completed: false })
@@ -96,28 +132,46 @@ export default function Todos() {
       setInputValue("")
     } catch (e) { console.error(e) }
   }
-// toggle the todos
+
+  // Toggle todo
   const toggleTodo = async (id: string, current: boolean) => {
+    if (!isAuthed) {
+      updateGuest(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t))
+      return
+    }
     setTodos(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t))
     try {
-      await fetch(`${API_URL}/${id}`, { method: "PATCH", headers: authHeaders() })
+      await fetch(`${API_BASE}/${id}`, { method: "PATCH", headers: authHeaders() })
     } catch {
       setTodos(prev => prev.map(t => t.id === id ? { ...t, completed: current } : t))
     }
   }
-// delete the todos
+
+  // Delete todo
   const deleteTodo = async (id: string) => {
+    if (!isAuthed) {
+      updateGuest(prev => prev.filter(t => t.id !== id))
+      return
+    }
     const old = [...todos]
     setTodos(prev => prev.filter(t => t.id !== id))
-    try { await fetch(`${API_URL}/${id}`, { method: "DELETE", headers: authHeaders() }) }
+    try { await fetch(`${API_BASE}/${id}`, { method: "DELETE", headers: authHeaders() }) }
     catch { setTodos(old) }
   }
-// edit the todos
+
+  // Edit todo
   const saveEdit = async (id: string) => {
     const val = editValue.trim()
     if (!val) return
+
+    if (!isAuthed) {
+      updateGuest(prev => prev.map(t => t.id === id ? { ...t, item: val } : t))
+      setEditValue("")
+      return
+    }
+
     try {
-      const res = await fetch(`${API_URL}/${id}/edit`, {
+      const res = await fetch(`${API_BASE}/${id}/edit`, {
         method: "PATCH",
         headers: authHeaders(),
         body: JSON.stringify({ item: val })
@@ -135,7 +189,7 @@ export default function Todos() {
   )
 
   return (
-    <> 
+    <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -204,47 +258,51 @@ export default function Todos() {
           transition: border-color 0.2s, box-shadow 0.2s;
         }
         .add-bar:focus-within {
-          border-color: #111; box-shadow: 0 4px 28px rgba(0,0,0,0.12);
+          border-color: #111;
+          box-shadow: 0 4px 32px rgba(0,0,0,0.12);
         }
         .add-bar input {
           flex: 1; border: none; outline: none;
-          font-size: 0.9rem; font-family: 'Inter', sans-serif;
+          font-size: 0.92rem; font-family: 'Inter', sans-serif;
           color: #111; background: transparent;
         }
-        .add-bar input::placeholder { color: #b0b7c3; }
+        .add-bar input::placeholder { color: #c4c9d4; }
         .add-bar-btn {
-          background: #111; color: #fff; border: none;
-          padding: 10px 22px; border-radius: 999px;
-          font-size: 0.82rem; font-weight: 700;
+          background: #111; color: #fff;
+          border: none; border-radius: 999px;
+          padding: 10px 20px;
+          font-size: 0.85rem; font-weight: 700;
           font-family: 'Inter', sans-serif; cursor: pointer;
           white-space: nowrap; transition: background 0.15s;
         }
         .add-bar-btn:hover { background: #333; }
 
-        .task-section { max-width: 680px; margin: 64px auto 0; padding: 0 24px 80px; }
+        .task-section {
+          max-width: 640px; margin: 0 auto;
+          padding: 0 24px 80px; margin-top: 52px;
+        }
         .section-header {
           display: flex; align-items: center; justify-content: space-between;
           margin-bottom: 16px;
         }
         .section-title {
-          font-size: 1.05rem; font-weight: 800;
-          letter-spacing: -0.02em; color: #111;
+          font-size: 0.72rem; font-weight: 700; color: #9ca3af;
+          text-transform: uppercase; letter-spacing: 0.1em;
         }
         .section-count {
-          font-size: 0.78rem; color: #9ca3af; font-weight: 500;
-          background: #f3f4f6; padding: 3px 10px; border-radius: 999px;
+          font-size: 0.72rem; font-weight: 700;
+          background: #f3f4f6; color: #6b7280;
+          border-radius: 999px; padding: 3px 10px;
         }
-        .filter-tabs {
-          display: flex; gap: 4px; background: #f3f4f6;
-          border-radius: 999px; padding: 4px;
-        }
+        .filter-tabs { display: flex; gap: 4px; }
         .filter-tab {
-          padding: 5px 14px; border-radius: 999px; border: none;
-          background: transparent; font-size: 0.78rem; font-weight: 600;
-          color: #6b7280; cursor: pointer; font-family: 'Inter', sans-serif;
-          transition: all 0.15s;
+          padding: 5px 13px; border-radius: 999px;
+          font-size: 0.77rem; font-weight: 600; cursor: pointer;
+          border: 1.5px solid transparent; background: transparent; color: #9ca3af;
+          font-family: 'Inter', sans-serif; transition: all 0.15s;
         }
-        .filter-tab.active { background: #fff; color: #111; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+        .filter-tab:hover { color: #374151; }
+        .filter-tab.active { background: #111; color: #fff; border-color: #111; }
 
         .task-list { display: flex; flex-direction: column; gap: 8px; }
         .task-card {
@@ -340,12 +398,8 @@ export default function Todos() {
         </nav>
 
         <div className="hero">
-          <h1 className="hero-title">
-            Capuchin
-          </h1>
-          <p className="hero-sub">
-            handle, plan, and execute tasks
-          </p>
+          <h1 className="hero-title">Capuchin</h1>
+          <p className="hero-sub">handle, plan, and execute tasks</p>
 
           <div className="add-bar">
             <input
@@ -357,6 +411,8 @@ export default function Todos() {
             />
             <button className="add-bar-btn" onClick={addTodo}>+ Add task</button>
           </div>
+
+
         </div>
 
         <div className="task-section">
