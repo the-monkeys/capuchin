@@ -35,11 +35,10 @@ const MonkeyLogo = () => (
 )
 // Simple checkmark icon for completed tasks
 const CheckIcon = () => (
-  <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-    <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
   </svg>
 )
-
 // localStorage helpers for unauthenticated user
 const loadGuestTodos = (): Todo[] => {
   try {
@@ -72,7 +71,7 @@ export default function Todos() {
       return payload.email ?? null
     } catch { return null }
   })()
-
+  // Helper to get auth headers for API requests
   const authHeaders = (): HeadersInit => ({
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
@@ -83,6 +82,7 @@ export default function Todos() {
     item: raw.item ?? raw.Item ?? "",
     completed: raw.completed ?? raw.Completed ?? false,
   })
+  // Handle logout: clear token and guest todos, then redirect to login
   const handleLogout = () => {
     localStorage.removeItem("token")
     navigate("/login")
@@ -97,7 +97,7 @@ export default function Todos() {
     })
   }
 
-  // Load todos 
+  // Load todos
   useEffect(() => {
     if (!isAuthed) {
       setTodos(loadGuestTodos())
@@ -485,12 +485,24 @@ export default function Todos() {
                       className="action-btn edit"
                       title="Edit"
                       onClick={() => { setEditingId(todo.id); setEditValue(todo.item) }}
-                    >✏</button>
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </button>
                     <button
                       className="action-btn delete"
                       title="Delete"
                       onClick={() => deleteTodo(todo.id)}
-                    >✕</button>
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                        <path d="M10 11v6M14 11v6" />
+                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               ))}
@@ -498,12 +510,6 @@ export default function Todos() {
           ) : null}
         </div>
 
-        <div className="footer">
-          {todos.length > 0
-            ? `${active} task${active !== 1 ? 's' : ''} remaining · Capuchin`
-            : "Capuchin · Get things done 🐒"
-          }
-        </div>
       </div>
     </>
   )
