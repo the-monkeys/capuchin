@@ -4,11 +4,17 @@ import (
 	"capuchin/internal/auth"
 	"capuchin/internal/database"
 	"capuchin/internal/todo"
+	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Load .env file if present so os.Getenv reads values during Init
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found or failed to load")
+	}
 	//Initialize database and auth
 	auth.Init()
 	database.Connect()
@@ -33,7 +39,6 @@ func main() {
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
-	r.GET("/todos", todo.GetTodos)
 	r.POST("/signup", auth.Signup)
 	r.POST("/login", auth.Login)
 
