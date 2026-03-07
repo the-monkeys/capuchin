@@ -1,10 +1,9 @@
 package auth
 
 import (
+	"capuchin/config"
 	"capuchin/internal/database"
 	"capuchin/internal/models"
-	"log"
-	"os"
 	"strings"
 	"time"
 
@@ -14,15 +13,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// JWT secret key (set during Init so env vars are loaded first)
 var jwtKey []byte
 
 func Init() {
-	jwtKey = []byte(os.Getenv("JWT_SECRET"))
-	if len(jwtKey) == 0 {
-		log.Println("ERROR: JWT_SECRET not set; using default insecure secret. Set JWT_SECRET in production.")
-		jwtKey = []byte("secret") // Default for dev if env not set
-	}
+	jwtKey = config.JWTKey
 }
 
 func Signup(c *gin.Context) {
