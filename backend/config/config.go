@@ -34,6 +34,7 @@ func init() {
 		POSTGRES_HOST:     os.Getenv("POSTGRES_HOST"),
 	}
 
+	// Load JWT secret
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		jwtSecret = "secret" // Default for dev if env not set
