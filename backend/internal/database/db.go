@@ -1,10 +1,17 @@
 package database
 
 import (
+<<<<<<< HEAD
 	"capuchin/config"
 	"database/sql"
 	"fmt"
 	"log"
+=======
+	"database/sql"
+	"fmt"
+	"log"
+	"os"
+>>>>>>> origin/auth-local
 	"time"
 
 	_ "github.com/lib/pq"
