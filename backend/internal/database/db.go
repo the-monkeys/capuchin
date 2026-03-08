@@ -1,7 +1,7 @@
 package database
 
 import (
-	"capuchin/config"
+	"capuchin/internal/config"
 	"database/sql"
 	"fmt"
 	"log"
@@ -13,11 +13,12 @@ import (
 var DB *sql.DB
 
 func Connect() {
-	connStr := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable",
+	connStr := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
 		config.Config.POSTGRES_HOST,
 		config.Config.POSTGRES_USER,
 		config.Config.POSTGRES_PASSWORD,
 		config.Config.POSTGRES_DB,
+		config.Config.POSTGRES_PORT,
 	)
 
 	var err error

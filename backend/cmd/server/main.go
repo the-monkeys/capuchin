@@ -1,9 +1,8 @@
 package main
 
 import (
-	"capuchin/internal/auth"
 	"capuchin/internal/database"
-	"capuchin/internal/todo"
+	"capuchin/internal/routes"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -11,12 +10,14 @@ import (
 )
 
 func main() {
-	// Load .env file if present so os.Getenv reads values during Init
+	//internal/config handles the godotenv loading implicitly
+	// because it is inside an init() block.
+	// But we just call it here just in case config is loaded late
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found or failed to load")
 	}
-	//Initialize database and auth
-	auth.Init()
+
+	//Initialize database
 	database.Connect()
 	database.InitSchema()
 
@@ -35,23 +36,8 @@ func main() {
 		c.Next()
 	})
 
-	// Public Routes
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
-	})
-	r.POST("/signup", auth.Signup)
-	r.POST("/login", auth.Login)
-
-	// Protected Routes
-	user := r.Group("/user")
-	user.Use(auth.Middleware())
-	{
-		user.GET("/todos", todo.GetTodos)
-		user.POST("/todos", todo.AddTodo)
-		user.PATCH("/todos/:id", todo.ToggleTodo)
-		user.PATCH("/todos/:id/edit", todo.EditTodo)
-		user.DELETE("/todos/:id", todo.DeleteTodo)
-	}
+	// Inject all predefined routes
+	routes.SetupRoutes(r)
 
 	r.Run(":8080")
 }
