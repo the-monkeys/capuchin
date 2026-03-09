@@ -39,9 +39,9 @@ capuchin/
 │   ├── Dockerfile                # Frontend Container
 │   ├── vite.config.ts            # Build Config
 │   └── package.json
-├── docker-compose.yml            # Prod Orchestration
-├── docker-compose.dev.yml        # Dev Mode Overrides
-└── makefile                      # Command shortcuts
+├── compose.yml                   # Prod Orchestration
+├── compose-dev.yml               # Dev Mode Overrides
+└── Makefile                      # Command shortcuts
 └── package.json                     
 
 ```
@@ -113,7 +113,7 @@ Runs the backend with `Air` (Go hot-reload) and Frontend with `Vite` (HMR). Chan
 ```bash
 make dev
 # OR
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+docker compose --env-file .env.example -f compose-dev.yml up --build
 ```
 - **Frontend**: http://localhost:5173
 - **Health Check**: http://localhost:8080/health
@@ -125,7 +125,7 @@ Runs a lean, production-ready build (`scratch` image for Go, `nginx` for React).
 ```bash
 make prod
 # OR
-docker compose up --build
+docker compose --env-file .env -f compose.yml up --build
 ```
 - **App**: http://localhost
 - **Health Check**: http://localhost:8080/health
@@ -168,4 +168,3 @@ auth login
 schedule with reminder
 version control
 mcp server
-
