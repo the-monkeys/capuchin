@@ -3,20 +3,11 @@ package main
 import (
 	"capuchin/internal/database"
 	"capuchin/internal/routes"
-	"log"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	//internal/config handles the godotenv loading implicitly
-	// because it is inside an init() block.
-	// But we just call it here just in case config is loaded late
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found or failed to load")
-	}
-
 	//Initialize database
 	database.Connect()
 	database.InitSchema()
