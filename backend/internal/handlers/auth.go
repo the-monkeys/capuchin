@@ -4,6 +4,7 @@ import (
 	"capuchin/internal/config"
 	"capuchin/internal/database"
 	"capuchin/internal/models"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,46 +15,58 @@ import (
 
 func Signup(c *gin.Context) {
 	var u models.User
-	var req struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+	var reqBody struct {
+		Email    string `json:"email" binding:"required,email"`
+		Password string `json:"password" binding:"required,min=8"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+	
+	if err := c.ShouldBindJSON(&reqBody); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request: missing fields or invalid format. Password must be >= 8 characters."})
 		return
 	}
 
-	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(reqBody.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to process password"})
+		return
+	}
+
 	u.ID = uuid.New()
-	u.Email = req.Email
+	u.Email = reqBody.Email
 	u.PasswordHash = string(hash)
 
-	_, err := database.DB.Exec("INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)", u.ID, u.Email, u.PasswordHash)
+	_, err = database.DB.Exec("INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)", u.ID, u.Email, u.PasswordHash)
 	if err != nil {
-		c.JSON(500, gin.H{"error": "User already exists or db error"})
+		errStr := err.Error()
+		if strings.Contains(errStr, "unique constraint") || strings.Contains(errStr, "duplicate key value") {
+			c.JSON(409, gin.H{"error": "User with this email already exists"})
+			return
+		}
+		c.JSON(500, gin.H{"error": "Failed to create user in database"})
 		return
 	}
-	c.JSON(201, gin.H{"message": "User created"})
+	
+	c.JSON(201, gin.H{"message": "User created successfully"})
 }
 
 func Login(c *gin.Context) {
-	var req struct {
+	var reqBody struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&reqBody); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 
 	var u models.User
-	err := database.DB.QueryRow("SELECT id, email, password_hash FROM users WHERE email=$1", req.Email).Scan(&u.ID, &u.Email, &u.PasswordHash)
+	err := database.DB.QueryRow("SELECT id, email, password_hash FROM users WHERE email=$1", reqBody.Email).Scan(&u.ID, &u.Email, &u.PasswordHash)
 	if err != nil {
 		c.JSON(401, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(reqBody.Password)); err != nil {
 		c.JSON(401, gin.H{"error": "Invalid credentials"})
 		return
 	}
@@ -74,7 +87,7 @@ func Logout(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "Authorization header missing"})
 		return
 	}
-	
+
 	// Remove "Bearer " prefix
 	if len(tokenStr) > 7 && tokenStr[:7] == "Bearer " {
 		tokenStr = tokenStr[7:]

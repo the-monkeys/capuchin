@@ -4,7 +4,6 @@ import (
 	"capuchin/internal/config"
 	"capuchin/internal/database"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -30,9 +29,10 @@ func AuthRequired() gin.HandlerFunc {
 			return
 		}
 
+		// Use built-in validators to strictly enforce expiration and the signing algorithm
 		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 			return config.JWTKey, nil
-		})
+		}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithExpirationRequired())
 
 		if err != nil || !token.Valid {
 			c.AbortWithStatusJSON(401, gin.H{"error": "Invalid or expired token"})
@@ -40,14 +40,6 @@ func AuthRequired() gin.HandlerFunc {
 		}
 
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			// Check expiration manually if needed, though jwt.Parse handles "exp" standard claim
-			if exp, ok := claims["exp"].(float64); ok {
-				if time.Now().Unix() > int64(exp) {
-					c.AbortWithStatusJSON(401, gin.H{"error": "Token has expired"})
-					return
-				}
-			}
-
 			// Extract user ID
 			raw, ok := claims["user_id"].(string)
 			if !ok {
