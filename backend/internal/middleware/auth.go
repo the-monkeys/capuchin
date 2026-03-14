@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"capuchin/internal/config"
+	"capuchin/internal/database"
 	"strings"
 	"time"
 
@@ -20,6 +21,14 @@ func AuthRequired() gin.HandlerFunc {
 		}
 		
 		tokenStr = strings.TrimPrefix(tokenStr, "Bearer ")
+
+		// Check if token is blacklisted
+		var exists bool
+		err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM blacklisted_tokens WHERE token=$1)", tokenStr).Scan(&exists)
+		if err == nil && exists {
+			c.AbortWithStatusJSON(401, gin.H{"error": "Token has been revoked"})
+			return
+		}
 
 		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 			return config.JWTKey, nil

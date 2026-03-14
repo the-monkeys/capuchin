@@ -3,6 +3,8 @@ package main
 import (
 	"capuchin/internal/database"
 	"capuchin/internal/routes"
+	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,6 +13,16 @@ func main() {
 	//Initialize database
 	database.Connect()
 	database.InitSchema()
+
+	// Start background token cleanup every hour
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		for range ticker.C {
+			if err := database.CleanupTokens(); err != nil {
+				log.Printf("Error cleaning up expired tokens: %v", err)
+			}
+		}
+	}()
 
 	//Initialize Gin router
 	r := gin.Default()

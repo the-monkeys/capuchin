@@ -23,6 +23,7 @@ func SetupRoutes(router *gin.Engine) {
 	protected := router.Group("/api/user")
 	protected.Use(middleware.AuthRequired()) // Using the new middleware package
 	{
+		protected.POST("/logout", handlers.Logout)           // Logout the authenticated user
 		protected.GET("/todo", handlers.GetTodos)            // Get all todos for the authenticated user
 		protected.POST("/todo", handlers.AddTodo)            // Add a new todo for the authenticated user
 		protected.PATCH("/todo/:id", handlers.ToggleTodo)    // Toggle the completion status of a specific todo

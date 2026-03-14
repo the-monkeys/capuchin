@@ -47,9 +47,18 @@ func InitSchema() {
 		item TEXT NOT NULL,
 		completed BOOLEAN DEFAULT FALSE,
 		user_id UUID REFERENCES users(id)
+	);
+	CREATE TABLE IF NOT EXISTS blacklisted_tokens (
+		token TEXT PRIMARY KEY,
+		expired_at TIMESTAMP NOT NULL
 	);`
 	_, err := DB.Exec(query)
 	if err != nil {
 		log.Fatal("Failed to init db:", err)
 	}
+}
+
+func CleanupTokens() error {
+	_, err := DB.Exec("DELETE FROM blacklisted_tokens WHERE expired_at < $1", time.Now())
+	return err
 }

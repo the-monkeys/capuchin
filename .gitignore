@@ -43,6 +43,7 @@ dist-ssr/
 
 # Test binary, built with `go test -c`
 *.test
+server
 
 # Go workspace file
 go.work

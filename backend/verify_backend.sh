@@ -41,3 +41,16 @@ curl -s -X GET $BASE_URL/api/user/todo -H "Authorization: Bearer $TOKEN" | grep 
 echo -e "\n6. Testing Delete Todo..."
 DELETE_RES=$(curl -s -X DELETE $BASE_URL/api/user/todo/$TODO_ID -H "Authorization: Bearer $TOKEN")
 echo "  - Response: $DELETE_RES"
+
+echo -e "\n7. Testing Logout..."
+LOGOUT_RES=$(curl -s -X POST $BASE_URL/api/user/logout -H "Authorization: Bearer $TOKEN")
+echo "  - Response: $LOGOUT_RES"
+
+echo -e "\n8. Testing Protected Route After Logout..."
+POST_LOGOUT_RES=$(curl -s -w "\n%{http_code}" -X GET $BASE_URL/api/user/todo -H "Authorization: Bearer $TOKEN")
+HTTP_CODE=$(echo "$POST_LOGOUT_RES" | tail -n1)
+if [ "$HTTP_CODE" -eq 401 ]; then
+  echo "  - Success: Request with logged-out token was rejected"
+else
+  echo "  - Error: Request with logged-out token succeeded unexpectedly (HTTP $HTTP_CODE)"
+fi
