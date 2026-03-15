@@ -38,15 +38,31 @@ TODO_ID=$(echo $TODO_RES | grep -oP '"id":"\K[^"]+')
 echo -e "\n5. Testing Get Todos..."
 curl -s -X GET $BASE_URL/api/user/todo -H "Authorization: Bearer $TOKEN" | grep -q "$TODO_ID" && echo "  - Success: Todo found in list" || echo "  - Error: Todo not found"
 
-echo -e "\n6. Testing Delete Todo..."
+echo -e "\n6. Testing PATCH Todo (Update text)..."
+PATCH_TEXT_RES=$(curl -s -X PATCH $BASE_URL/api/user/todo/$TODO_ID \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"item": "Use unified PATCH endpoint"}')
+echo "  - Response: $PATCH_TEXT_RES"
+curl -s -X GET $BASE_URL/api/user/todo -H "Authorization: Bearer $TOKEN" | grep -q "Use unified PATCH endpoint" && echo "  - Success: Todo text updated" || echo "  - Error: Todo text not updated"
+
+echo -e "\n7. Testing PATCH Todo (Toggle completion)..."
+PATCH_BOOL_RES=$(curl -s -X PATCH $BASE_URL/api/user/todo/$TODO_ID \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"completed": true}')
+echo "  - Response: $PATCH_BOOL_RES"
+curl -s -X GET $BASE_URL/api/user/todo -H "Authorization: Bearer $TOKEN" | grep -q '"completed":true' && echo "  - Success: Todo completion toggled" || echo "  - Error: Todo completion not toggled"
+
+echo -e "\n8. Testing Delete Todo..."
 DELETE_RES=$(curl -s -X DELETE $BASE_URL/api/user/todo/$TODO_ID -H "Authorization: Bearer $TOKEN")
 echo "  - Response: $DELETE_RES"
 
-echo -e "\n7. Testing Logout..."
+echo -e "\n9. Testing Logout..."
 LOGOUT_RES=$(curl -s -X POST $BASE_URL/api/user/logout -H "Authorization: Bearer $TOKEN")
 echo "  - Response: $LOGOUT_RES"
 
-echo -e "\n8. Testing Protected Route After Logout..."
+echo -e "\n10. Testing Protected Route After Logout..."
 POST_LOGOUT_RES=$(curl -s -w "\n%{http_code}" -X GET $BASE_URL/api/user/todo -H "Authorization: Bearer $TOKEN")
 HTTP_CODE=$(echo "$POST_LOGOUT_RES" | tail -n1)
 if [ "$HTTP_CODE" -eq 401 ]; then
