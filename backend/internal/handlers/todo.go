@@ -44,7 +44,7 @@ func (h *TodoHandler) AddTodo(c *gin.Context) {
 	c.JSON(200, todo)
 }
 
-func (h *TodoHandler) ToggleTodo(c *gin.Context) {
+func (h *TodoHandler) UpdateTodo(c *gin.Context) {
 	userID := c.MustGet("userID").(uuid.UUID)
 	idParam := c.Param("id")
 	id, err := uuid.Parse(idParam)
@@ -53,41 +53,22 @@ func (h *TodoHandler) ToggleTodo(c *gin.Context) {
 		return
 	}
 
-	todo, err := h.todoService.ToggleTodo(userID, id)
-	if err != nil {
-		if err == services.ErrTodoNotFound {
-			c.JSON(404, gin.H{"error": "Todo not found"})
-			return
-		}
-		c.JSON(500, gin.H{"error": "Failed to toggle todo"})
-		return
-	}
-	c.JSON(200, todo)
-}
-
-func (h *TodoHandler) EditTodo(c *gin.Context) {
-	userID := c.MustGet("userID").(uuid.UUID)
-	idParam := c.Param("id")
-	id, err := uuid.Parse(idParam)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid id"})
-		return
-	}
 	var req struct {
-		Item string `json:"item" binding:"required"`
+		Item      *string `json:"item"`
+		Completed *bool   `json:"completed"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 
-	todo, err := h.todoService.EditTodo(userID, id, req.Item)
+	todo, err := h.todoService.UpdateTodo(userID, id, req.Item, req.Completed)
 	if err != nil {
 		if err == services.ErrTodoNotFound {
 			c.JSON(404, gin.H{"error": "Todo not found"})
 			return
 		}
-		c.JSON(500, gin.H{"error": "Failed to edit todo"})
+		c.JSON(500, gin.H{"error": "Failed to update todo"})
 		return
 	}
 	c.JSON(200, todo)

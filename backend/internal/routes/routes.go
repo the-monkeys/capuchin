@@ -26,8 +26,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler, todoHand
 		protected.POST("/logout", authHandler.Logout)           // Logout the authenticated user
 		protected.GET("/todo", todoHandler.GetTodos)            // Get all todos for the authenticated user
 		protected.POST("/todo", todoHandler.AddTodo)            // Add a new todo for the authenticated user
-		protected.PATCH("/todo/:id", todoHandler.ToggleTodo)    // Toggle the completion status of a specific todo
-		protected.PATCH("/todo/:id/edit", todoHandler.EditTodo) // Edit the content of a specific todo
+		protected.PATCH("/todo/:id", todoHandler.UpdateTodo)    // Partially update a specific todo (item and/or completion status)
 		protected.DELETE("/todo/:id", todoHandler.DeleteTodo)   // Delete a specific todo
 	}
 }

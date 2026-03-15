@@ -16,8 +16,7 @@ var (
 type TodoService interface {
 	GetTodos(userID uuid.UUID) ([]models.Todo, error)
 	AddTodo(userID uuid.UUID, item string, completed bool) (*models.Todo, error)
-	ToggleTodo(userID, todoID uuid.UUID) (*models.Todo, error)
-	EditTodo(userID, todoID uuid.UUID, item string) (*models.Todo, error)
+	UpdateTodo(userID, todoID uuid.UUID, item *string, completed *bool) (*models.Todo, error)
 	DeleteTodo(userID, todoID uuid.UUID) error
 }
 
@@ -60,28 +59,26 @@ func (s *todoService) AddTodo(userID uuid.UUID, item string, completed bool) (*m
 	return t, nil
 }
 
-func (s *todoService) ToggleTodo(userID, todoID uuid.UUID) (*models.Todo, error) {
-	var t models.Todo
-	err := database.DB.QueryRow(`
-		UPDATE todos SET completed = NOT completed 
-		WHERE id=$1 AND user_id=$2 
-		RETURNING id, item, completed`, todoID, userID).Scan(&t.ID, &t.Item, &t.Completed)
-
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrTodoNotFound
+func (s *todoService) UpdateTodo(userID, todoID uuid.UUID, item *string, completed *bool) (*models.Todo, error) {
+	if item == nil && completed == nil {
+		var t models.Todo
+		err := database.DB.QueryRow("SELECT id, item, completed FROM todos WHERE id=$1 AND user_id=$2", todoID, userID).Scan(&t.ID, &t.Item, &t.Completed)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, ErrTodoNotFound
+			}
+			return nil, ErrDatabase
 		}
-		return nil, ErrDatabase
+		return &t, nil
 	}
-	return &t, nil
-}
 
-func (s *todoService) EditTodo(userID, todoID uuid.UUID, item string) (*models.Todo, error) {
 	var t models.Todo
 	err := database.DB.QueryRow(`
-		UPDATE todos SET item=$1 
-		WHERE id=$2 AND user_id=$3 
-		RETURNING id, item, completed`, item, todoID, userID).Scan(&t.ID, &t.Item, &t.Completed)
+		UPDATE todos 
+		SET item = COALESCE($1, item), 
+		    completed = COALESCE($2, completed)
+		WHERE id=$3 AND user_id=$4 
+		RETURNING id, item, completed`, item, completed, todoID, userID).Scan(&t.ID, &t.Item, &t.Completed)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
