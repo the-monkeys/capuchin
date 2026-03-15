@@ -63,10 +63,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 func (h *AuthHandler) Logout(c *gin.Context) {
 	tokenStr := c.GetHeader("Authorization")
-	if tokenStr == "" {
-		c.JSON(400, gin.H{"error": "Authorization header missing"})
-		return
-	}
 
 	err := h.authService.Logout(tokenStr)
 	if err != nil {

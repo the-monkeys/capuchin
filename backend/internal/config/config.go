@@ -20,7 +20,6 @@ type AppConfig struct {
 	POSTGRES_DB       string
 	POSTGRES_HOST     string
 	POSTGRES_PORT     int
-	JWTKey            string
 }
 
 var Config AppConfig
@@ -52,7 +51,6 @@ func init() {
 		jwtSecret = "secret" // Default for dev if env not set
 		log.Println("WARNING: JWT_SECRET not set or empty; using default insecure secret. Set JWT_SECRET in production.")
 	}
-	Config.JWTKey = jwtSecret
 	JWTKey = []byte(jwtSecret)
 
 	log.Println("Configuration loaded successfully.")

@@ -95,6 +95,10 @@ func (s *authService) Logout(tokenStr string) error {
 		return config.JWTKey, nil
 	})
 
+	if token == nil {
+		return ErrInvalidToken
+	}
+
 	var expTime time.Time
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		if exp, ok := claims["exp"].(float64); ok {

@@ -41,6 +41,11 @@ func (s *todoService) GetTodos(userID uuid.UUID) ([]models.Todo, error) {
 		}
 		todos = append(todos, t)
 	}
+
+	if err := rows.Err(); err != nil {
+		return nil, ErrDatabase
+	}
+
 	return todos, nil
 }
 
