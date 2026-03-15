@@ -2,7 +2,9 @@ package main
 
 import (
 	"capuchin/internal/database"
+	"capuchin/internal/handlers"
 	"capuchin/internal/routes"
+	"capuchin/internal/services"
 	"log"
 	"time"
 
@@ -24,6 +26,14 @@ func main() {
 		}
 	}()
 
+	// Initialize services
+	authService := services.NewAuthService()
+	todoService := services.NewTodoService()
+
+	// Initialize handlers
+	authHandler := handlers.NewAuthHandler(authService)
+	todoHandler := handlers.NewTodoHandler(todoService)
+
 	//Initialize Gin router
 	r := gin.Default()
 
@@ -40,7 +50,7 @@ func main() {
 	})
 
 	// Inject all predefined routes
-	routes.SetupRoutes(r)
+	routes.SetupRoutes(r, authHandler, todoHandler)
 
 	r.Run(":8080")
 }

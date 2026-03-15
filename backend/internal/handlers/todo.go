@@ -1,52 +1,50 @@
 package handlers
 
 import (
-	"capuchin/internal/database"
-	"capuchin/internal/models"
+	"capuchin/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
-func GetTodos(c *gin.Context) {
-	userID := c.MustGet("userID").(uuid.UUID)
-	rows, err := database.DB.Query("SELECT id, item, completed FROM todos WHERE user_id=$1", userID)
-	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	defer rows.Close()
+type TodoHandler struct {
+	todoService services.TodoService
+}
 
-	todos := []models.Todo{}
-	for rows.Next() {
-		var t models.Todo
-		if err := rows.Scan(&t.ID, &t.Item, &t.Completed); err != nil {
-			continue
-		}
-		todos = append(todos, t)
+func NewTodoHandler(svc services.TodoService) *TodoHandler {
+	return &TodoHandler{todoService: svc}
+}
+
+func (h *TodoHandler) GetTodos(c *gin.Context) {
+	userID := c.MustGet("userID").(uuid.UUID)
+	todos, err := h.todoService.GetTodos(userID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to get todos"})
+		return
 	}
 	c.JSON(200, todos)
 }
 
-func AddTodo(c *gin.Context) {
+func (h *TodoHandler) AddTodo(c *gin.Context) {
 	userID := c.MustGet("userID").(uuid.UUID)
-	var t models.Todo
-	if err := c.ShouldBindJSON(&t); err != nil {
+	var req struct {
+		Item      string `json:"item" binding:"required"`
+		Completed bool   `json:"completed"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
-	t.ID = uuid.New()
-	t.UserID = userID
 
-	_, err := database.DB.Exec("INSERT INTO todos (id, item, completed, user_id) VALUES ($1, $2, $3, $4)", t.ID, t.Item, t.Completed, t.UserID)
+	todo, err := h.todoService.AddTodo(userID, req.Item, req.Completed)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.JSON(500, gin.H{"error": "Failed to add todo"})
 		return
 	}
-	c.JSON(200, t)
+	c.JSON(200, todo)
 }
 
-func ToggleTodo(c *gin.Context) {
+func (h *TodoHandler) ToggleTodo(c *gin.Context) {
 	userID := c.MustGet("userID").(uuid.UUID)
 	idParam := c.Param("id")
 	id, err := uuid.Parse(idParam)
@@ -55,21 +53,19 @@ func ToggleTodo(c *gin.Context) {
 		return
 	}
 
-	var t models.Todo
-	// Toggle and return new state
-	err = database.DB.QueryRow(`
-		UPDATE todos SET completed = NOT completed 
-		WHERE id=$1 AND user_id=$2 
-		RETURNING id, item, completed`, id, userID).Scan(&t.ID, &t.Item, &t.Completed)
-
+	todo, err := h.todoService.ToggleTodo(userID, id)
 	if err != nil {
-		c.JSON(404, gin.H{"error": "Todo not found"})
+		if err == services.ErrTodoNotFound {
+			c.JSON(404, gin.H{"error": "Todo not found"})
+			return
+		}
+		c.JSON(500, gin.H{"error": "Failed to toggle todo"})
 		return
 	}
-	c.JSON(200, t)
+	c.JSON(200, todo)
 }
 
-func EditTodo(c *gin.Context) {
+func (h *TodoHandler) EditTodo(c *gin.Context) {
 	userID := c.MustGet("userID").(uuid.UUID)
 	idParam := c.Param("id")
 	id, err := uuid.Parse(idParam)
@@ -78,27 +74,26 @@ func EditTodo(c *gin.Context) {
 		return
 	}
 	var req struct {
-		Item string `json:"item"`
+		Item string `json:"item" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 
-	var t models.Todo
-	err = database.DB.QueryRow(`
-		UPDATE todos SET item=$1 
-		WHERE id=$2 AND user_id=$3 
-		RETURNING id, item, completed`, req.Item, id, userID).Scan(&t.ID, &t.Item, &t.Completed)
-
+	todo, err := h.todoService.EditTodo(userID, id, req.Item)
 	if err != nil {
-		c.JSON(404, gin.H{"error": "Todo not found"})
+		if err == services.ErrTodoNotFound {
+			c.JSON(404, gin.H{"error": "Todo not found"})
+			return
+		}
+		c.JSON(500, gin.H{"error": "Failed to edit todo"})
 		return
 	}
-	c.JSON(200, t)
+	c.JSON(200, todo)
 }
 
-func DeleteTodo(c *gin.Context) {
+func (h *TodoHandler) DeleteTodo(c *gin.Context) {
 	userID := c.MustGet("userID").(uuid.UUID)
 	idParam := c.Param("id")
 	id, err := uuid.Parse(idParam)
@@ -106,16 +101,14 @@ func DeleteTodo(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "invalid id"})
 		return
 	}
-	res, err := database.DB.Exec("DELETE FROM todos WHERE id=$1 AND user_id=$2", id, userID)
-	if err != nil {
-		c.JSON(500, gin.H{"error": "Failed to delete todo"})
-		return
-	}
 
-	rowsAffected, _ := res.RowsAffected()
-	if rowsAffected == 0 {
-		// This means the todo didn't exist or didn't belong to the user
-		c.JSON(404, gin.H{"error": "Todo not found"})
+	err = h.todoService.DeleteTodo(userID, id)
+	if err != nil {
+		if err == services.ErrTodoNotFound {
+			c.JSON(404, gin.H{"error": "Todo not found"})
+			return
+		}
+		c.JSON(500, gin.H{"error": "Failed to delete todo"})
 		return
 	}
 
