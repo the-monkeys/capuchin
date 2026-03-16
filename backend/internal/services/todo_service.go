@@ -27,6 +27,7 @@ func NewTodoService() TodoService {
 }
 
 func (s *todoService) GetTodos(userID uuid.UUID) ([]models.Todo, error) {
+	// Scope every read by user_id so one user can never read another user's todos.
 	rows, err := database.DB.Query("SELECT id, item, completed FROM todos WHERE user_id=$1", userID)
 	if err != nil {
 		return nil, ErrDatabase
@@ -37,6 +38,7 @@ func (s *todoService) GetTodos(userID uuid.UUID) ([]models.Todo, error) {
 	for rows.Next() {
 		var t models.Todo
 		if err := rows.Scan(&t.ID, &t.Item, &t.Completed); err != nil {
+			// Skip malformed rows instead of failing the whole response for a single bad record.
 			continue
 		}
 		todos = append(todos, t)
@@ -66,6 +68,7 @@ func (s *todoService) AddTodo(userID uuid.UUID, item string, completed bool) (*m
 
 func (s *todoService) UpdateTodo(userID, todoID uuid.UUID, item *string, completed *bool) (*models.Todo, error) {
 	if item == nil && completed == nil {
+		// Empty PATCH requests are treated as a read to keep the endpoint idempotent.
 		var t models.Todo
 		err := database.DB.QueryRow("SELECT id, item, completed FROM todos WHERE id=$1 AND user_id=$2", todoID, userID).Scan(&t.ID, &t.Item, &t.Completed)
 		if err != nil {
@@ -80,6 +83,7 @@ func (s *todoService) UpdateTodo(userID, todoID uuid.UUID, item *string, complet
 	var t models.Todo
 	err := database.DB.QueryRow(`
 		UPDATE todos 
+		-- COALESCE preserves existing values when fields are omitted from PATCH payloads.
 		SET item = COALESCE($1, item), 
 		    completed = COALESCE($2, completed)
 		WHERE id=$3 AND user_id=$4 
@@ -102,6 +106,7 @@ func (s *todoService) DeleteTodo(userID, todoID uuid.UUID) error {
 
 	rowsAffected, _ := res.RowsAffected()
 	if rowsAffected == 0 {
+		// Distinguish "not found" from successful deletion for better API semantics.
 		return ErrTodoNotFound
 	}
 

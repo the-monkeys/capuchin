@@ -18,15 +18,18 @@ func AuthRequired() gin.HandlerFunc {
 			return
 		}
 
+		// Accept standard Authorization header format without forcing clients to preprocess it.
 		tokenStr = strings.TrimPrefix(tokenStr, "Bearer ")
 
 		var exists bool
+		// Check revocation before claim extraction so logout takes effect immediately.
 		err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM blacklisted_tokens WHERE token=$1)", tokenStr).Scan(&exists)
 		if err == nil && exists {
 			c.AbortWithStatusJSON(401, gin.H{"error": "Token has been revoked"})
 			return
 		}
 
+		// Restrict acceptable algorithms and require exp to reduce token confusion attacks.
 		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 			return config.JWTKey, nil
 		}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithExpirationRequired())
@@ -43,6 +46,7 @@ func AuthRequired() gin.HandlerFunc {
 				c.AbortWithStatusJSON(401, gin.H{"error": "invalid token claims"})
 				return
 			}
+			// Parse into UUID once so handlers can rely on a strongly typed user identity.
 			uid, err := uuid.Parse(raw)
 			if err != nil {
 				c.AbortWithStatusJSON(401, gin.H{"error": "invalid user id in token"})

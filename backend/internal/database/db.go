@@ -30,16 +30,19 @@ func Connect() {
 		log.Fatal("Could not connect to database:", err)
 	}
 
+	// Conservative pool settings avoid exhausting DB connections in small deployments.
 	DB.SetMaxOpenConns(25)
 	DB.SetMaxIdleConns(5)
+	// Recycling connections helps recover from stale network state over long uptimes.
 	DB.SetConnMaxLifetime(5 * time.Minute)
 }
 
 func InitSchema() {
+	// Schema bootstrap allows first run without an external migration step.
 	query := `
-	CREATE TABLE IF NOT EXISTS users (
-		id UUID PRIMARY KEY,
-		email TEXT UNIQUE NOT NULL,
+		CREATE TABLE IF NOT EXISTS users (
+			id UUID PRIMARY KEY,
+			email TEXT UNIQUE NOT NULL,
 		password_hash TEXT NOT NULL
 	);
 	CREATE TABLE IF NOT EXISTS todos (
@@ -59,6 +62,7 @@ func InitSchema() {
 }
 
 func CleanupTokens() error {
+	// Expired tokens can be dropped because JWT expiration already invalidates them.
 	_, err := DB.Exec("DELETE FROM blacklisted_tokens WHERE expired_at < $1", time.Now())
 	return err
 }
