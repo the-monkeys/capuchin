@@ -12,8 +12,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// AppConfig holds the configuration values for the application,
-
 type AppConfig struct {
 	POSTGRES_PASSWORD string
 	POSTGRES_USER     string
@@ -45,10 +43,9 @@ func init() {
 		log.Fatal(err)
 	}
 
-	// Load JWT secret
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		jwtSecret = "secret" // Default for dev if env not set
+		jwtSecret = "secret"
 		log.Println("WARNING: JWT_SECRET not set or empty; using default insecure secret. Set JWT_SECRET in production.")
 	}
 	JWTKey = []byte(jwtSecret)

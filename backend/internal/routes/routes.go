@@ -9,7 +9,6 @@ import (
 
 func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler, todoHandler *handlers.TodoHandler) {
 
-	// Global Error Handler
 	router.Use(middleware.ErrorHandler())
 
 	// Public Routes
@@ -21,12 +20,12 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler, todoHand
 
 	// Protected Routes
 	protected := router.Group("/api/user")
-	protected.Use(middleware.AuthRequired()) // Using the new middleware package
+	protected.Use(middleware.AuthRequired())
 	{
-		protected.POST("/logout", authHandler.Logout)           // Logout the authenticated user
-		protected.GET("/todo", todoHandler.GetTodos)            // Get all todos for the authenticated user
-		protected.POST("/todo", todoHandler.AddTodo)            // Add a new todo for the authenticated user
-		protected.PATCH("/todo/:id", todoHandler.UpdateTodo)    // Partially update a specific todo (item and/or completion status)
-		protected.DELETE("/todo/:id", todoHandler.DeleteTodo)   // Delete a specific todo
+		protected.POST("/logout", authHandler.Logout)
+		protected.GET("/todo", todoHandler.GetTodos)
+		protected.POST("/todo", todoHandler.AddTodo)
+		protected.PATCH("/todo/:id", todoHandler.UpdateTodo)
+		protected.DELETE("/todo/:id", todoHandler.DeleteTodo)
 	}
 }

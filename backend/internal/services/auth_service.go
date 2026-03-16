@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	ErrUserExists        = errors.New("user with this email already exists")
+	ErrUserExists         = errors.New("user with this email already exists")
 	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrInvalidToken      = errors.New("invalid or expired token")
-	ErrDatabase          = errors.New("database error")
+	ErrInvalidToken       = errors.New("invalid or expired token")
+	ErrDatabase           = errors.New("database error")
 )
 
 type AuthService interface {
@@ -85,12 +85,10 @@ func (s *authService) Logout(tokenStr string) error {
 		return ErrInvalidToken
 	}
 
-	// Remove "Bearer " prefix
 	if len(tokenStr) > 7 && tokenStr[:7] == "Bearer " {
 		tokenStr = tokenStr[7:]
 	}
 
-	// Calculate expiration based on JWT claims
 	token, _ := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		return config.JWTKey, nil
 	})
@@ -104,13 +102,12 @@ func (s *authService) Logout(tokenStr string) error {
 		if exp, ok := claims["exp"].(float64); ok {
 			expTime = time.Unix(int64(exp), 0)
 		} else {
-			expTime = time.Now().Add(72 * time.Hour) // Fallback
+			expTime = time.Now().Add(72 * time.Hour)
 		}
 	} else {
 		return ErrInvalidToken
 	}
 
-	// Insert into blacklisted_tokens table
 	_, err := database.DB.Exec("INSERT INTO blacklisted_tokens (token, expired_at) VALUES ($1, $2) ON CONFLICT (token) DO NOTHING", tokenStr, expTime)
 	if err != nil {
 		return ErrDatabase

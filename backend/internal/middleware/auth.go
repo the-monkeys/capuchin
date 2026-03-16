@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// AuthRequired validates JWT token and injects user ID into context
 func AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenStr := c.GetHeader("Authorization")
@@ -18,10 +17,9 @@ func AuthRequired() gin.HandlerFunc {
 			c.AbortWithStatusJSON(401, gin.H{"error": "Authorization header required"})
 			return
 		}
-		
+
 		tokenStr = strings.TrimPrefix(tokenStr, "Bearer ")
 
-		// Check if token is blacklisted
 		var exists bool
 		err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM blacklisted_tokens WHERE token=$1)", tokenStr).Scan(&exists)
 		if err == nil && exists {
@@ -29,7 +27,6 @@ func AuthRequired() gin.HandlerFunc {
 			return
 		}
 
-		// Use built-in validators to strictly enforce expiration and the signing algorithm
 		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 			return config.JWTKey, nil
 		}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithExpirationRequired())
@@ -40,7 +37,7 @@ func AuthRequired() gin.HandlerFunc {
 		}
 
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			// Extract user ID
+
 			raw, ok := claims["user_id"].(string)
 			if !ok {
 				c.AbortWithStatusJSON(401, gin.H{"error": "invalid token claims"})
@@ -51,7 +48,7 @@ func AuthRequired() gin.HandlerFunc {
 				c.AbortWithStatusJSON(401, gin.H{"error": "invalid user id in token"})
 				return
 			}
-			
+
 			c.Set("userID", uid)
 			c.Next()
 		} else {
