@@ -38,27 +38,8 @@ func Connect() {
 }
 
 func InitSchema() {
-	// Schema bootstrap allows first run without an external migration step.
-	query := `
-		CREATE TABLE IF NOT EXISTS users (
-			id UUID PRIMARY KEY,
-			email TEXT UNIQUE NOT NULL,
-		password_hash TEXT NOT NULL
-	);
-	CREATE TABLE IF NOT EXISTS todos (
-		id UUID PRIMARY KEY,
-		item TEXT NOT NULL,
-		completed BOOLEAN DEFAULT FALSE,
-		user_id UUID REFERENCES users(id)
-	);
-	CREATE TABLE IF NOT EXISTS blacklisted_tokens (
-		token TEXT PRIMARY KEY,
-		expired_at TIMESTAMP NOT NULL
-	);`
-	_, err := DB.Exec(query)
-	if err != nil {
-		log.Fatal("Failed to init db:", err)
-	}
+	// Schema is assumed to be pre-initialized (e.g., via CI/CD pipelines).
+	log.Println("Database connection initialized. Assuming schema is already present.")
 }
 
 func CleanupTokens() error {
