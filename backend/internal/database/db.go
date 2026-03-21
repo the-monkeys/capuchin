@@ -39,6 +39,7 @@ func Connect() {
 
 func InitSchema() {
 	// Schema is assumed to be pre-initialized (e.g., via CI/CD pipelines).
+	//TODO: remove after actual implementation
 	log.Println("Database connection initialized. Assuming schema is already present.")
 }
 
