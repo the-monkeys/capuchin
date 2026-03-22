@@ -44,7 +44,7 @@ const normalise = (raw: Record<string, unknown>): Todo => ({
 
 export const todosApi = {
   getAll: async (token: string): Promise<Todo[]> => {
-    const res = await fetch(`${BASE}/user/todos`, {
+    const res = await fetch(`${BASE}/api/user/todo`, {
       headers: authHeaders(token),
     })
     if (!res.ok) throw new Error(`Failed to fetch todos: ${res.status}`)
@@ -53,7 +53,7 @@ export const todosApi = {
   },
 
   create: async (token: string, item: string): Promise<Todo> => {
-    const res = await fetch(`${BASE}/user/todos`, {
+    const res = await fetch(`${BASE}/api/user/todos`, {
       method: "POST",
       headers: authHeaders(token),
       body: JSON.stringify({ item, completed: false }),
@@ -63,7 +63,7 @@ export const todosApi = {
   },
 
   toggle: async (token: string, id: string): Promise<void> => {
-    const res = await fetch(`${BASE}/user/todos/${id}`, {
+    const res = await fetch(`${BASE}/api/user/todos/${id}`, {
       method: "PATCH",
       headers: authHeaders(token),
     })
@@ -71,7 +71,7 @@ export const todosApi = {
   },
 
   update: async (token: string, id: string, item: string): Promise<Todo> => {
-    const res = await fetch(`${BASE}/user/todos/${id}/edit`, {
+    const res = await fetch(`${BASE}/api/user/todos/${id}/edit`, {
       method: "PATCH",
       headers: authHeaders(token),
       body: JSON.stringify({ item }),
@@ -81,7 +81,7 @@ export const todosApi = {
   },
 
   delete: async (token: string, id: string): Promise<void> => {
-    const res = await fetch(`${BASE}/user/todos/${id}`, {
+    const res = await fetch(`${BASE}/api/user/todos/${id}`, {
       method: "DELETE",
       headers: authHeaders(token),
     })
