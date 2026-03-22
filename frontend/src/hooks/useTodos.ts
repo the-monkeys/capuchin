@@ -72,7 +72,7 @@ export function useTodos(token: string | null, isAuthed: boolean) {
       }
       setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)))
       try {
-        await todosApi.toggle(token!, id)
+        await todosApi.toggle(token!, id, !current)
       } catch {
         setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, completed: current } : t)))
       }
