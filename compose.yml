@@ -14,6 +14,7 @@ services:
     image: postgres:17-alpine
     volumes:
     - ./backup:/var/lib/postgresql
+    - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
 
 
   backend:
