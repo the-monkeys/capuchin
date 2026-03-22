@@ -1,123 +1,56 @@
 package main
 
 import (
-	"capuchin/internal/models"
-	"capuchin/internal/store"
-	"net/http"
-
-	"sync"
+	"capuchin/internal/database"
+	"capuchin/internal/handlers"
+	"capuchin/internal/routes"
+	"capuchin/internal/services"
+	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
-// path to db
-const dbPath = "../../db/db.json"
-
-// create a list of todos imported from models/todo.go
-var todos []models.Todo
-var mu sync.RWMutex
-
 func main() {
-	// Load data from disk on startup
-	var err error
-	todos, err = store.Load(dbPath)
-	if err != nil {
-		//if loading  fails on first run (file not found), just start empty
-		todos = []models.Todo{}
-	}
+	// Bootstrapping schema at startup to keep local/dev deployments self-contained.
+	database.Connect()
+	database.InitSchema()
+
+	// Periodic cleanup prevents the revoked-token table from growing forever.
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		for range ticker.C {
+			if err := database.CleanupTokens(); err != nil {
+				log.Printf("Error cleaning up expired tokens: %v", err)
+			}
+		}
+	}()
+
+	// Handlers depend on interfaces so business logic can be swapped in tests.
+	authService := services.NewAuthService()
+	todoService := services.NewTodoService()
+
+	authHandler := handlers.NewAuthHandler(authService)
+	todoHandler := handlers.NewTodoHandler(todoService)
 
 	r := gin.Default()
 
-	// CORS Middleware
+	// Allow cross-origin requests so a separately hosted frontend can call this API.
+	// Restrict this in production to trusted origins.
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		if c.Request.Method == "OPTIONS" {
+			// Short-circuit preflight checks to avoid running downstream handlers.
 			c.AbortWithStatus(204)
 			return
 		}
 		c.Next()
 	})
 
-	//health check route
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
-	})
-
-	// route to return  list of todos
-	r.GET("/todos", func(c *gin.Context) {
-		mu.RLock()
-		defer mu.RUnlock()
-		c.JSON(200, todos)
-	})
-
-	// route to add a new item
-	r.POST("/todos", func(c *gin.Context) {
-		var newTodo models.Todo
-
-		// Bind the incoming JSON to our struct
-		if err := c.ShouldBindJSON(&newTodo); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		newTodo.ID = uuid.New().String()
-
-		// Add to the list
-		mu.Lock()
-		todos = append(todos, newTodo)
-		store.Save(dbPath, todos) // Save
-		mu.Unlock()
-
-		// Respond with the created item
-		c.JSON(http.StatusOK, newTodo)
-	})
-
-	// PATCH /todos/:id - Toggle "completed" status
-	r.PATCH("/todos/:id", func(c *gin.Context) {
-		id := c.Param("id") // Get the ID from the URL
-
-		mu.Lock()
-		defer mu.Unlock()
-
-		// Iterate through the list to find the item
-		for i, t := range todos {
-			if t.ID == id {
-				// Flip the status
-				todos[i].Completed = !todos[i].Completed
-
-				// Respond with the updated item
-				c.JSON(200, todos[i])
-				store.Save(dbPath, todos) // <--- Use store.Save
-				return
-			}
-		}
-
-		c.JSON(404, gin.H{"message": "Todo not found"})
-	})
-
-	// DELETE /todos/:id - Delete an item
-	r.DELETE("/todos/:id", func(c *gin.Context) {
-		id := c.Param("id")
-
-		mu.Lock()
-		defer mu.Unlock()
-
-		for i, t := range todos {
-			if t.ID == id {
-				// Delete: Append everything AFTER index i to everything BEFORE index i
-				todos = append(todos[:i], todos[i+1:]...)
-
-				c.JSON(200, gin.H{"message": "Todo deleted"})
-				store.Save(dbPath, todos) // <--- Use store.Save
-
-				return
-			}
-		}
-		c.JSON(404, gin.H{"message": "Todo not found"})
-	})
+	// Keep route wiring centralized so auth boundaries are easy to audit.
+	routes.SetupRoutes(r, authHandler, todoHandler)
 
 	r.Run(":8080")
 }

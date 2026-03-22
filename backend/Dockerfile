@@ -27,8 +27,8 @@ CMD ["air", "-c", "air.toml"]
 # Final Stage
 FROM scratch
 
-# Set working directory to match the relative path expectation in main.go (../../db/db.json)
-WORKDIR /app/cmd/server
+# Set working directory to the app root
+WORKDIR /app
 
 # Copy the binary from the builder stage
 COPY --from=builder /app/server ./
@@ -38,3 +38,4 @@ EXPOSE 8080
 
 # Run the application
 CMD ["./server"]
+

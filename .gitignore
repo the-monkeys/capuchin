@@ -43,6 +43,7 @@ dist-ssr/
 
 # Test binary, built with `go test -c`
 *.test
+server
 
 # Go workspace file
 go.work
@@ -57,6 +58,7 @@ go.work
 build/
 bin/
 tmp/
+temp/
 
 # .gitignore file at the root of your project
 frontend/node_modules
@@ -67,7 +69,31 @@ backend/build/
 # Frontend specific ignores (in a 'frontend' folder)
 frontend/node_modules/
 
+# .env files
+.env
+.env.*
+!.env.example
+
+# Docker Volumes & Databases
+postgres-data/
+capuchin-db-data/
+db-data/
+volume/
+
+# Terraform (if deployed later)
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Mac OS & IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
 # personal 
 docs/ideas.md
-
-backup
+backup/

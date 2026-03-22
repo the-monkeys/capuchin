@@ -3,13 +3,13 @@ A basic full-stack todo list application with a Go (Golang) REST API backend and
 
 ## 🚀 Features Implemented
 
-* **Backend (Go + Gin):** RESTful API with CRUD operations.
+* **Backend (Go + Gin):** RESTful API with distinct layers (Handlers, Services, DB) and robust error handling.
+* **Authentication:** Secure Signup, Login, and Logout using JWT tokens.
+* **Database (PostgreSQL):** Relational persistence using `database/sql` with schema initialization on startup.
 * **Frontend (React + Vite):** Modern reactive UI with Hooks (useState, useEffect).
 * **Styling (Tailwind CSS):** Dark-mode interface with optimistic UI.
-* **Persistence:** File-based JSON storage.
-* **Architecture:** Refactored into "Standard Go Layout" (cmd, internal).
+* **Architecture:** Clean architecture enforcing separation of concerns in 'internal'.
 * **Containerization:** Docker & Docker Compose for Dev/Prod.
-
 
 ## 📂 Project Structure
 
@@ -19,14 +19,14 @@ capuchin/
 │   ├── cmd/
 │   │   └── server/
 │   │       └── main.go           # Entry point
-│   ├── db/
-│   │   └── db.json               # Database
 │   ├── internal/
-│   │   ├── api/
-│   │   ├── models/
-│   │   │   └── todo.go           # Data structures
-│   │   └── store/
-│   │       └── file.go           # File I/O logic
+│   │   ├── config/               # Environment & Config setup
+│   │   ├── database/             # PostgreSQL connection & init
+│   │   ├── handlers/             # HTTP Route handlers
+│   │   ├── middleware/           # Auth & Error middleware
+│   │   ├── models/               # Data structures
+│   │   ├── routes/               # API route definitions
+│   │   └── services/             # Core business logic
 │   ├── Dockerfile                # Backend Container
 │   ├── air.toml                  # Hot Reload Config
 │   ├── go.mod                    # Dependencies
@@ -39,22 +39,20 @@ capuchin/
 │   ├── Dockerfile                # Frontend Container
 │   ├── vite.config.ts            # Build Config
 │   └── package.json
-├── docker-compose.yml            # Prod Orchestration
-├── docker-compose.dev.yml        # Dev Mode Overrides
-└── makefile                      # Command shortcuts
+├── compose.yml                   # Prod Orchestration
+├── compose-dev.yml               # Dev Mode Overrides
+└── Makefile                      # Command shortcuts
 └── package.json                     
 
 ```
 
 ## 💻 Tech Stack
-* **Backend:** Go (REST API)
-* **Frontend:** React, TypeScript
-* **Containerize:** Docker
-* **Database:** File System storage
+## 💻 Tech Stack
+* **Backend:** Go (REST API, Clean Architecture)
 * **Backend Framework:** Gin
 * **Frontend:** React, TypeScript
 * **Containerize:** Docker
-* **Database:** File System storage
+* **Database:** PostgreSQL
 
 ## 🛠️ How to Run
 
@@ -113,7 +111,7 @@ Runs the backend with `Air` (Go hot-reload) and Frontend with `Vite` (HMR). Chan
 ```bash
 make dev
 # OR
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+docker compose --env-file .env.example -f compose-dev.yml up --build
 ```
 - **Frontend**: http://localhost:5173
 - **Health Check**: http://localhost:8080/health
@@ -125,7 +123,7 @@ Runs a lean, production-ready build (`scratch` image for Go, `nginx` for React).
 ```bash
 make prod
 # OR
-docker compose up --build
+docker compose --env-file .env -f compose.yml up --build
 ```
 - **App**: http://localhost
 - **Health Check**: http://localhost:8080/health
@@ -146,18 +144,22 @@ ctrl+c or cmd+c
     
 ## 🧠 Key Concepts Implemented (can be seen in comments)
 
-* **Go:** Structs, Slices, JSON Marshalling, Modules, Package Exporting.
+For an in-depth dive into the structure and patterns, please refer to our dedicated documentation:
+- [Backend Architecture Reference](backend_architecture.md)
+- [Backend Best Practices](backend_best_practices.md)
+- [Backend API Contract](backend_api.md)
+- [Backend Database Schema](backend_schema.md)
+
+* **Go:** Structs, Slices, JSON Marshalling, Modules, Package Exporting, Clean Architecture.
 * **React:** Functional Components, Hooks, API Integration (fetch, async/await), Controlled Inputs.
+* **Testing:** Included a robust `backend/verify_backend.sh` shell script to instantly orchestrate E2E integration tests against all API endpoints.
 * **Docker:** Multi-stage builds, Scratch images, Docker Compose overrides.
 * **General:** REST API Design, CORS, JSON Persistence, Refactoring,TypeScript(for styling), axios (for API calls)
 
 
-Plans for v1:
-auth
-real db
-mcp server
+Long term plans:
 
-Long term plans:folder todo
+folder todo
 collaborators
 real time update
 organization
@@ -168,4 +170,3 @@ auth login
 schedule with reminder
 version control
 mcp server
-
