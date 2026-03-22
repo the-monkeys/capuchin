@@ -22,7 +22,7 @@ export default function Signup() {
     setSuccess("")
     try {
       await authApi.signup(email, password)
-      setSuccess("Account created! Taking you to login...")
+      setSuccess("Account created! Taking you to login.")
       setTimeout(() => navigate("/login"), 1500)
     } catch (err: unknown) {
       const anyErr = err as { response?: { data?: { error?: string } } }
