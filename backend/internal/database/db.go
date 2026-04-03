@@ -38,31 +38,27 @@ func Connect() {
 	// Recycling connections helps recover from stale network state over long uptimes.
 	DB.SetConnMaxLifetime(5 * time.Minute)
 
-	if err = DB.Ping(); err == nil {
-		log.Println("Database connected successfully.")
-		return
-	}
-
-	log.Printf("Initial DB connection failed: %v. Retrying in background...", err)
-	go retryConnection()
-}
-
-func retryConnection() {
 	for i := 1; i <= maxRetries; i++ {
-		time.Sleep(retryInterval)
-		if err := DB.Ping(); err == nil {
-			log.Printf("Database connected successfully on attempt %d.", i)
+		if err = DB.Ping(); err == nil {
+			if i > 1 {
+				log.Printf("Database connected successfully on attempt %d.", i)
+			} else {
+				log.Println("Database connected successfully.")
+			}
 			return
-		} else {
-			log.Printf("DB connection attempt %d/%d failed: %v", i, maxRetries, err)
+		}
+
+		if i < maxRetries {
+			log.Printf("DB connection attempt %d/%d failed: %v. Retrying in %v...", i, maxRetries, err, retryInterval)
+			time.Sleep(retryInterval)
 		}
 	}
-	panic(fmt.Sprintf("could not connect to database after %d attempts — shutting down", maxRetries))
+
+	log.Fatalf("could not connect to database after %d attempts: %v — shutting down", maxRetries, err)
 }
 
 func InitSchema() {
 	// Schema is assumed to be pre-initialized (e.g., via CI/CD pipelines).
-	//TODO: remove after actual implementation
 	log.Println("Database connection initialized. Assuming schema is already present.")
 }
 
