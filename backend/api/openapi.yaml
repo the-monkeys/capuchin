@@ -1,0 +1,434 @@
+openapi: 3.0.3
+info:
+  title: Capuchin API
+  version: 1.0.0
+  description: REST API documentation for authentication and todo management.
+servers:
+  - url: http://localhost:8080
+    description: Local development
+tags:
+  - name: Health
+    description: Service health checks
+  - name: Auth
+    description: User authentication endpoints
+  - name: Todos
+    description: Authenticated todo operations
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      description: Returns service liveness status.
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /signup:
+    post:
+      tags: [Auth]
+      summary: Register a user
+      description: Creates a new user account with email and password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupRequest"
+      responses:
+        "201":
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              examples:
+                created:
+                  value:
+                    message: User created successfully
+        "400":
+          description: Invalid request payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidPayload:
+                  value:
+                    error: "Invalid request: missing fields or invalid format. Password must be >= 8 characters."
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                exists:
+                  value:
+                    error: User with this email already exists
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /login:
+    post:
+      tags: [Auth]
+      summary: Login
+      description: Authenticates the user and returns a JWT token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          description: Invalid request payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidCredentials:
+                  value:
+                    error: Invalid credentials
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/user/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      description: Revokes the provided JWT token by blacklisting it.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              examples:
+                ok:
+                  value:
+                    message: Logged out successfully
+        "400":
+          description: Invalid token components
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidToken:
+                  value:
+                    error: Invalid token components
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/user/todo:
+    get:
+      tags: [Todos]
+      summary: List todos
+      description: Returns all todos for the authenticated user.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Todos fetched successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Todo"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags: [Todos]
+      summary: Create a todo
+      description: Creates a todo for the authenticated user.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTodoRequest"
+      responses:
+        "200":
+          description: Todo created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Todo"
+        "400":
+          description: Invalid request payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/user/todo/{id}:
+    patch:
+      tags: [Todos]
+      summary: Update a todo
+      description: Updates todo fields for the authenticated user.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Todo ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTodoRequest"
+      responses:
+        "200":
+          description: Todo updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Todo"
+        "400":
+          description: Invalid ID or payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidId:
+                  value:
+                    error: invalid id
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Todo not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                missingTodo:
+                  value:
+                    error: Todo not found
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags: [Todos]
+      summary: Delete a todo
+      description: Deletes a todo owned by the authenticated user.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Todo ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Todo deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              examples:
+                deleted:
+                  value:
+                    message: Todo deleted successfully
+        "400":
+          description: Invalid ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Todo not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Paste the JWT token from /login.
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            badRequest:
+              value:
+                error: Invalid request
+    Unauthorized:
+      description: Unauthorized or token invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            unauthorized:
+              value:
+                error: Invalid or expired token
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            notFound:
+              value:
+                error: Resource not found
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            generic:
+              value:
+                error: Internal server error
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+    SignupRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          minLength: 8
+          example: secretpass123
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          example: secretpass123
+    LoginResponse:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    CreateTodoRequest:
+      type: object
+      required: [item]
+      properties:
+        item:
+          type: string
+          example: Buy bananas
+        completed:
+          type: boolean
+          default: false
+    UpdateTodoRequest:
+      type: object
+      properties:
+        item:
+          type: string
+          example: Buy mangoes
+        completed:
+          type: boolean
+    Todo:
+      type: object
+      required: [id, item, completed, user_id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        item:
+          type: string
+        completed:
+          type: boolean
+        user_id:
+          type: string
+          format: uuid
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
