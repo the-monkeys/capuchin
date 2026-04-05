@@ -3,12 +3,16 @@ package database
 import (
 	"capuchin/internal/config"
 	"database/sql"
+	"embed"
 	"fmt"
 	"log"
 	"time"
 
 	_ "github.com/lib/pq"
+	"github.com/pressly/goose/v3"
 )
+
+var migrations embed.FS
 
 var DB *sql.DB
 
@@ -37,10 +41,15 @@ func Connect() {
 	DB.SetConnMaxLifetime(5 * time.Minute)
 }
 
-func InitSchema() {
-	// Schema is assumed to be pre-initialized (e.g., via CI/CD pipelines).
-	//TODO: remove after actual implementation
-	log.Println("Database connection initialized. Assuming schema is already present.")
+func Migrate() {
+	goose.SetBaseFS(migrations)
+	if err := goose.SetDialect("postgres"); err != nil {
+		log.Fatal("goose dialect error:", err)
+	}
+	if err := goose.Up(DB, "migrations"); err != nil {
+		log.Fatal("goose migration error:", err)
+	}
+	log.Println("Database migrations applied successfully.")
 }
 
 func CleanupTokens() error {

@@ -63,6 +63,7 @@ This decouples the handler from a strictly concrete service implementation, pavi
 ## Database & Persistence
 
 - **Connection Pool:** A centralized `sql.DB` connection pool (`database.DB`) is initialized at startup. It configures connection lifetimes, max open, and max idle connections to prevent resource exhaustion.
+- **Schema Migrations:** Managed by [Goose v3](https://github.com/pressly/goose). `database.Migrate()` is called at startup and applies any pending SQL migrations in order. Migration files are embedded into the binary via `embed.FS`, making the binary fully self-contained with no external file dependencies at runtime. See [Backend Database Schema](backend_schema.md) for the full migration strategy and tooling rationale.
 - **Relational Integrity:** Uses standard PostgreSQL relations (e.g., `todos.user_id REFERENCES users(id)`).
 - **UUIDs:** Primary keys are decentralized using UUIDs.
 

@@ -14,7 +14,7 @@ import (
 func main() {
 	// Bootstrapping schema at startup to keep local/dev deployments self-contained.
 	database.Connect()
-	database.InitSchema()
+	database.Migrate()
 
 	// Periodic cleanup prevents the revoked-token table from growing forever.
 	go func() {

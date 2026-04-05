@@ -5,7 +5,7 @@ A basic full-stack todo list application with a Go (Golang) REST API backend and
 
 * **Backend (Go + Gin):** RESTful API with distinct layers (Handlers, Services, DB) and robust error handling.
 * **Authentication:** Secure Signup, Login, and Logout using JWT tokens.
-* **Database (PostgreSQL):** Relational persistence using `database/sql` with schema initialization on startup.
+* **Database (PostgreSQL):** Relational persistence using `database/sql` with schema migrations managed by Goose v3 on startup.
 * **Frontend (React + Vite):** Modern reactive UI with Hooks (useState, useEffect).
 * **Styling (Tailwind CSS):** Dark-mode interface with optimistic UI.
 * **Architecture:** Clean architecture enforcing separation of concerns in 'internal'.
@@ -53,6 +53,7 @@ capuchin/
 * **Frontend:** React, TypeScript
 * **Containerize:** Docker
 * **Database:** PostgreSQL
+* **Migrations:** Goose v3
 
 ## 🛠️ How to Run
 
