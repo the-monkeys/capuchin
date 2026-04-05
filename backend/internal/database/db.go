@@ -12,6 +12,7 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
+//go:embed ../../../db/migrations/*.sql
 var migrations embed.FS
 
 var DB *sql.DB
