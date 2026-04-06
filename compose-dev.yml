@@ -15,10 +15,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_HOST: ${POSTGRES_HOST}
     ports:
-    - "${SERVER_PORT:-8080}:8080"
+      - "${SERVER_PORT:-8080}:8080"
     restart: unless-stopped
     volumes:
-    - ./backend:/app
+      - ./backend:/app
 
   capuchin-db:
     container_name: capuchin-db
@@ -34,11 +34,12 @@ services:
     healthcheck:
       interval: 5s
       retries: 5
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       timeout: 5s
     image: postgres:17-alpine
     volumes:
-    - ./backup:/var/lib/postgresql
+      - ./backup:/var/lib/postgresql
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   frontend:
     build:
@@ -52,6 +53,5 @@ services:
       - "${CLIENT_PORT:-5173}:5173"
     restart: unless-stopped
     volumes:
-    - ./frontend:/app
-    - /app/node_modules
-
+      - ./frontend:/app
+      - /app/node_modules

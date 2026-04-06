@@ -42,6 +42,13 @@ func Connect() {
 	DB.SetConnMaxLifetime(5 * time.Minute)
 }
 
+func InitSchema() {
+	//Schema is assume to be pre-initialized (via a CI/CD pipeline)
+	// Todo: remove after Implementation
+	log.Println("Database connection initialized, Assuming schema is alredy present")
+
+}
+
 func Migrate() {
 	goose.SetBaseFS(migrations)
 	if err := goose.SetDialect("postgres"); err != nil {
