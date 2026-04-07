@@ -16,12 +16,28 @@ COPY . .
 # CGO_ENABLED=0 ensures a statically linked binary
 RUN CGO_ENABLED=0 GOOS=linux go build -o server cmd/server/main.go
 
+# Migrate Build Stage
+FROM deps AS migrate-builder
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o migrate cmd/migrate/main.go
+
 # Development Stage
 FROM deps AS dev
 
 RUN go install github.com/air-verse/air@latest
 
 CMD ["air", "-c", "air.toml"]
+
+# Migrate Stage
+FROM scratch AS migrate
+
+WORKDIR /app
+
+COPY --from=migrate-builder /app/migrate ./
+
+CMD ["./migrate"]
 
 
 # Final Stage

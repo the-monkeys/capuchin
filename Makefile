@@ -35,5 +35,8 @@ frontend:
 backend:
 	cd backend && air
 
-.PHONY:  dev dev-logs dev-down prod logs down
+seed:
+	cd backend && go run ./cmd/seed
+
+.PHONY:  dev dev-logs dev-down prod logs down seed
 

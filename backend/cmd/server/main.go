@@ -6,6 +6,7 @@ import (
 	"capuchin/internal/routes"
 	"capuchin/internal/services"
 	"log"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +15,9 @@ import (
 func main() {
 	// Bootstrapping schema at startup to keep local/dev deployments self-contained.
 	database.Connect()
+	if os.Getenv("MODE") == "dev" {
+		database.Migrate()
+	}
 
 	// Periodic cleanup prevents the revoked-token table from growing forever.
 	go func() {

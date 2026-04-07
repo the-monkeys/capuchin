@@ -98,3 +98,4 @@ crash.*.log
 # personal 
 docs/ideas.md
 backup/
+.kiro
