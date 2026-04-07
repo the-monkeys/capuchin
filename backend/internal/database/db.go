@@ -1,9 +1,9 @@
 package database
 
 import (
+	capuchindb "capuchin/db"
 	"capuchin/internal/config"
 	"database/sql"
-	"embed"
 	"fmt"
 	"log"
 	"time"
@@ -11,9 +11,6 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 )
-
-//go:embed migrations/*.sql
-var migrations embed.FS
 
 var DB *sql.DB
 
@@ -45,7 +42,7 @@ func Connect() {
 // Goose tracks applied versions in the goose_db_version table, making
 // repeated calls safe (idempotent).
 func Migrate() {
-	goose.SetBaseFS(migrations)
+	goose.SetBaseFS(capuchindb.Migrations)
 	if err := goose.SetDialect("postgres"); err != nil {
 		log.Fatal("goose dialect error:", err)
 	}
