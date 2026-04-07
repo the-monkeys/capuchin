@@ -18,7 +18,8 @@ var migrations embed.FS
 var DB *sql.DB
 
 func Connect() {
-	connStr := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
+	connStr := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
 		config.Config.POSTGRES_HOST,
 		config.Config.POSTGRES_USER,
 		config.Config.POSTGRES_PASSWORD,
@@ -29,26 +30,20 @@ func Connect() {
 	var err error
 	DB, err = sql.Open("postgres", connStr)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("failed to open db:", err)
 	}
 	if err = DB.Ping(); err != nil {
-		log.Fatal("Could not connect to database:", err)
+		log.Fatal("could not connect to database:", err)
 	}
 
-	// Conservative pool settings avoid exhausting DB connections in small deployments.
 	DB.SetMaxOpenConns(25)
 	DB.SetMaxIdleConns(5)
-	// Recycling connections helps recover from stale network state over long uptimes.
 	DB.SetConnMaxLifetime(5 * time.Minute)
 }
 
-func InitSchema() {
-	//Schema is assume to be pre-initialized (via a CI/CD pipeline)
-	// Todo: remove after Implementation
-	log.Println("Database connection initialized, Assuming schema is alredy present")
-
-}
-
+// Migrate runs all pending goose migrations embedded in the binary.
+// Goose tracks applied versions in the goose_db_version table, making
+// repeated calls safe (idempotent).
 func Migrate() {
 	goose.SetBaseFS(migrations)
 	if err := goose.SetDialect("postgres"); err != nil {
@@ -57,11 +52,10 @@ func Migrate() {
 	if err := goose.Up(DB, "migrations"); err != nil {
 		log.Fatal("goose migration error:", err)
 	}
-	log.Println("Database migrations applied successfully.")
+	log.Println("migrations applied successfully")
 }
 
 func CleanupTokens() error {
-	// Expired tokens can be dropped because JWT expiration already invalidates them.
-	_, err := DB.Exec("DELETE FROM blacklisted_tokens WHERE expired_at < $1", time.Now())
+	_, err := DB.Exec("DELETE FROM blacklisted_tokens WHERE expired_at < NOW()")
 	return err
 }
