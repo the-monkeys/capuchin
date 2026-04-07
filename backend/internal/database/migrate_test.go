@@ -3,7 +3,6 @@ package database_test
 import (
 	"context"
 	"database/sql"
-	"embed"
 	"io/fs"
 	"regexp"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	capuchindb "capuchin/db"
 	"capuchin/internal/database"
 
 	"github.com/google/uuid"
@@ -22,9 +22,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"pgregory.net/rapid"
 )
-
-//go:embed migrations/*.sql
-var testMigrations embed.FS
 
 // newTestDB spins up a testcontainers postgres instance and returns a *sql.DB.
 func newTestDB(t *testing.T) *sql.DB {
@@ -81,7 +78,7 @@ func TestP1_MigrationFileStructuralInvariants(t *testing.T) {
 	// Matches any CREATE TABLE occurrence
 	createTableAnyRe := regexp.MustCompile(`(?i)CREATE\s+TABLE\b`)
 
-	entries, err := fs.ReadDir(testMigrations, "migrations")
+	entries, err := fs.ReadDir(capuchindb.Migrations, "migrations")
 	if err != nil {
 		t.Fatalf("failed to read migrations dir: %v", err)
 	}
@@ -114,7 +111,7 @@ func TestP1_MigrationFileStructuralInvariants(t *testing.T) {
 		prevPrefix = prefix
 
 		// Read file content
-		content, err := testMigrations.ReadFile("migrations/" + name)
+		content, err := capuchindb.Migrations.ReadFile("migrations/" + name)
 		if err != nil {
 			t.Fatalf("failed to read migration file %q: %v", name, err)
 		}
