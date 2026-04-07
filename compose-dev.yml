@@ -1,25 +1,4 @@
 services:
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: dev
-    container_name: capuchin-server
-    depends_on:
-      capuchin-db:
-        condition: service_healthy
-    environment:
-      MODE: dev
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-    ports:
-      - "${SERVER_PORT:-8080}:8080"
-    restart: unless-stopped
-    volumes:
-      - ./backend:/app
-
   capuchin-db:
     container_name: capuchin-db
     environment:
@@ -27,10 +6,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_HOST: ${POSTGRES_HOST}
-
     ports:
       - "5432:5432"
-
     healthcheck:
       interval: 5s
       retries: 5
@@ -40,6 +17,41 @@ services:
     volumes:
       - ./backup/data:/var/lib/postgresql/data
       - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: migrate
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+    depends_on:
+      capuchin-db:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: capuchin-server
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
 
   frontend:
     build:

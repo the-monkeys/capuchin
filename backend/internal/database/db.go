@@ -1,7 +1,6 @@
 package database
 
 import (
-	capuchindb "capuchin/db"
 	"capuchin/internal/config"
 	"database/sql"
 	"fmt"
@@ -9,7 +8,6 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
-	"github.com/pressly/goose/v3"
 )
 
 var DB *sql.DB
@@ -36,20 +34,6 @@ func Connect() {
 	DB.SetMaxOpenConns(25)
 	DB.SetMaxIdleConns(5)
 	DB.SetConnMaxLifetime(5 * time.Minute)
-}
-
-// Migrate runs all pending goose migrations embedded in the binary.
-// Goose tracks applied versions in the goose_db_version table, making
-// repeated calls safe (idempotent).
-func Migrate() {
-	goose.SetBaseFS(capuchindb.Migrations)
-	if err := goose.SetDialect("postgres"); err != nil {
-		log.Fatal("goose dialect error:", err)
-	}
-	if err := goose.Up(DB, "migrations"); err != nil {
-		log.Fatal("goose migration error:", err)
-	}
-	log.Println("migrations applied successfully")
 }
 
 func CleanupTokens() error {

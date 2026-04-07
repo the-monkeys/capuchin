@@ -35,8 +35,11 @@ frontend:
 backend:
 	cd backend && air
 
+migrate:
+	cd backend && go run ./cmd/migrate
+
 seed:
 	cd backend && go run ./cmd/seed
 
-.PHONY:  dev dev-logs dev-down prod logs down seed
+.PHONY:  dev dev-logs dev-down prod logs down migrate seed
 
