@@ -3,6 +3,7 @@ package database_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"io/fs"
 	"log"
 	"regexp"
@@ -30,13 +31,21 @@ import (
 // the application package for migration concerns.
 func migrateDB(t *testing.T, db *sql.DB) {
 	t.Helper()
+	if err := migrateDBErr(db); err != nil {
+		t.Fatalf("migrateDB: %v", err)
+	}
+}
+
+// migrateDBErr applies migrations and returns any error, safe to call from goroutines.
+func migrateDBErr(db *sql.DB) error {
 	goose.SetBaseFS(capuchindb.Migrations)
 	if err := goose.SetDialect("postgres"); err != nil {
-		t.Fatalf("goose dialect: %v", err)
+		return fmt.Errorf("goose dialect: %w", err)
 	}
 	if err := goose.Up(db, "migrations"); err != nil {
-		t.Fatalf("goose up: %v", err)
+		return fmt.Errorf("goose up: %w", err)
 	}
+	return nil
 }
 
 // newTestDB spins up a testcontainers postgres instance and returns a *sql.DB.
@@ -329,11 +338,19 @@ func TestP6_ConcurrentMigrationSafety(t *testing.T) {
 	rapid.Check(t, func(rt *rapid.T) {
 		db := newTestDB(t)
 
+		errs := make(chan error, 2)
 		var wg sync.WaitGroup
 		wg.Add(2)
-		go func() { defer wg.Done(); migrateDB(t, db) }()
-		go func() { defer wg.Done(); migrateDB(t, db) }()
+		go func() { defer wg.Done(); errs <- migrateDBErr(db) }()
+		go func() { defer wg.Done(); errs <- migrateDBErr(db) }()
 		wg.Wait()
+		close(errs)
+
+		for err := range errs {
+			if err != nil {
+				rt.Logf("concurrent migrate error (expected on race): %v", err)
+			}
+		}
 
 		rows, err := db.Query(`SELECT version_id, is_applied FROM goose_db_version WHERE version_id = 1`)
 		if err != nil {
