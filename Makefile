@@ -39,7 +39,7 @@ migrate:
 	cd backend && go run ./cmd/migrate
 
 seed:
-	cd backend && go run ./cmd/seed
+	cd backend && POSTGRES_HOST=localhost go run ./cmd/seed
 
 .PHONY:  dev dev-logs dev-down prod logs down migrate seed
 
