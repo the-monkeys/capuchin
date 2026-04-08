@@ -36,7 +36,7 @@ backend:
 	cd backend && air
 
 migrate:
-	cd backend && go run ./cmd/migrate
+	cd backend && POSTGRES_HOST=localhost go run ./cmd/migrate
 
 seed:
 	cd backend && POSTGRES_HOST=localhost go run ./cmd/seed
