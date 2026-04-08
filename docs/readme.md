@@ -1,162 +1,104 @@
-## 📜 Capuchin: A basic Todo app
-A basic full-stack todo list application with a Go (Golang) REST API backend and a React frontend with a professional-grade storage architecture.
+## 📜 Capuchin: A robust Todo application
+A feature-rich full-stack todo list application with a Go (Golang) REST API backend and a React/Vite frontend using a professional-grade decoupled architecture.
 
 ## 🚀 Features Implemented
 
-* **Backend (Go + Gin):** RESTful API with distinct layers (Handlers, Services, DB) and robust error handling.
-* **Authentication:** Secure Signup, Login, and Logout using JWT tokens.
-* **Database (PostgreSQL):** Relational persistence using `database/sql` with schema migrations managed by Goose v3 on startup.
-* **Frontend (React + Vite):** Modern reactive UI with Hooks (useState, useEffect).
-* **Styling (Tailwind CSS):** Dark-mode interface with optimistic UI.
-* **Architecture:** Clean architecture enforcing separation of concerns in 'internal'.
-* **Containerization:** Docker & Docker Compose for Dev/Prod.
+* **Backend (Go + Gin):** RESTful API with distinct layers (`handlers`, `services`, `database`, `middleware`) and robust error handling.
+* **Authentication:** Secure Signup, Login, and Logout using short-lived JWT tokens with a database-backed token blacklisting mechanism.
+* **Database (PostgreSQL):** Relational persistence mapped implicitly to user context to enforce cross-tenant data isolation.
+* **Frontend (React + Vite):** Modern reactive UI with custom asynchronous Hooks (`useTodos`, `useAuth`) abstracting away native `fetch` requests.
+* **Offline-friendly mode:** Supports an unauthenticated Guest mode backed tightly by `localStorage`.
+* **Containerization:** Clean Docker Compose multi-stage orchestrations covering both isolated local development profiles and production scratch-image deployment.
 
 ## 📂 Project Structure
 
-```
+```text
 capuchin/
 ├── backend/
 │   ├── cmd/
-│   │   └── server/
-│   │       └── main.go           # Entry point
+│   │   ├── server/           # Entry point for the REST server
+│   │   ├── migrate/          # Standalone binary runner for schema definitions
+│   │   └── seed/             # Dev DB seed runner
 │   ├── internal/
-│   │   ├── config/               # Environment & Config setup
-│   │   ├── database/             # PostgreSQL connection & init
-│   │   ├── handlers/             # HTTP Route handlers
-│   │   ├── middleware/           # Auth & Error middleware
-│   │   ├── models/               # Data structures
-│   │   ├── routes/               # API route definitions
-│   │   └── services/             # Core business logic
-│   ├── Dockerfile                # Backend Container
-│   ├── air.toml                  # Hot Reload Config
-│   ├── go.mod                    # Dependencies
-│   └── go.sum
+│   │   ├── config/           # Environment & Config map parsing
+│   │   ├── database/         # PostgreSQL driver configuration & pooling limits 
+│   │   ├── handlers/         # HTTP Route logic & payload validation
+│   │   ├── middleware/       # Identity resolution & security guards
+│   │   ├── models/           # Data structures
+│   │   ├── routes/           # Mux mappings setup
+│   │   └── services/         # Identity and persistence core logic workflows
+│   ├── Dockerfile            # Multi-stage Backend Container 
+│   ├── air.toml              # Hot Reload configs
+│   ├── go.mod                # Go Dependencies
+│   └── test.sh               # Integration / E2E endpoint bash test harness
 ├── frontend/
 │   ├── src/
+│   │   ├── components/       # Presentational layout components
+│   │   ├── hooks/            # Primary React state workflows (`useAuth`, `useTodos`) 
+│   │   ├── lib/              # Core native-fetch wrapper API logic
+│   │   ├── pages/            # Page-level route views
+│   │   ├── types/            # TypeScript definitions
 │   │   ├── App.tsx
-│   │   ├── App.css
 │   │   └── main.tsx
-│   ├── Dockerfile                # Frontend Container
-│   ├── vite.config.ts            # Build Config
+│   ├── Dockerfile            # Nginx + React Multi-stage Frontend Container
+│   ├── vite.config.ts        # Vite bundling settings
 │   └── package.json
-├── compose.yml                   # Prod Orchestration
-├── compose-dev.yml               # Dev Mode Overrides
-└── Makefile                      # Command shortcuts
-└── package.json                     
-
+├── compose.yml               # Lean Production Orchestration
+├── compose-dev.yml           # Dev Mode (Air/Vite) overrides
+└── Makefile                  # Command shortcuts
 ```
 
-## 💻 Tech Stack
 ## 💻 Tech Stack
 * **Backend:** Go (REST API, Clean Architecture)
 * **Backend Framework:** Gin
-* **Frontend:** React, TypeScript
-* **Containerize:** Docker
+* **Frontend:** React, TypeScript, Vite
+* **Runtime Orchestration:** Docker, Make
 * **Database:** PostgreSQL
-* **Migrations:** Goose v3
+* **Migrations:** Goose v3 (Inside Docker)
 
 ## 🛠️ How to Run
 
-### Method 1:   In separate terminals
+### Method 1: Docker (Recommended)
+This approach encapsulates all dependencies securely via Docker Engine configurations.
 
-
-
-#### <b> Backend: </b>
-
-Open Terminal 1
-``` Bash
-cd backend
-go run cmd/server/main.go
-```
-`Server runs on localhost:8080`
-
-#### Frontend:
-
-Open Terminal 2
-``` Bash
-cd frontend
-npm run dev
-```
-`Client opens at localhost:5173`
-
-
----
-
-### Method 2:   Using npm Script (In project home directory)
-
-Install npm packages
-``` Bash
-npm i
-```
-Run npx script
-
-``` Bash
-npx concurrently "cd ./backend/cmd/server && go run main.go" "npm run dev --prefix ./frontend"
-```
-
-- **Frontend**: http://localhost:5173
-- **Health Check**: http://localhost:8080/health
-- **Backend API**: http://localhost:8080/todos
-
-
----
-
-
-### Method 3: Docker (In project home directory)
-
-We support two modes: **Development** (Hot-Reload) and **Production** (Lean Static Builds).
-
-#### <u >Development Mode</u >
-Runs the backend with `Air` (Go hot-reload) and Frontend with `Vite` (HMR). Changes to code are reflected instantly.
-
-```bash
-make dev
+#### For Development (Hot-Reloading)
+Runs the Go backend natively through Air for hot-schema reload mappings, and the React frontend via Vite HMR.
+```sh
+make dev 
 # OR
 docker compose --env-file .env.example -f compose-dev.yml up --build
 ```
-- **Frontend**: http://localhost:5173
-- **Health Check**: http://localhost:8080/health
-- **Backend API**: http://localhost:8080/todos
+- **Frontend App**: `http://localhost:5173`
+- **Backend API Base**: `http://localhost:8080`
 
-#### <u > Production Mode</u >
-Runs a lean, production-ready build (`scratch` image for Go, `nginx` for React).
-
+#### For Production
+Runs a lean production-ready sequence packaging the Go engine natively in a `scratch` container, and distributing the React codebase via `nginx`.
 ```bash
 make prod
 # OR
 docker compose --env-file .env -f compose.yml up --build
 ```
-- **App**: http://localhost
-- **Health Check**: http://localhost:8080/health
-- **Backend API**: http://localhost:8080/todos
 
-#### Stop Containers
+### Method 2: Native via NPM script
+Requires Go, Node.js, and Postgres installed natively on your machine!
+Ensure your root `.env` accurately targets your native Postgres installation.
 ```bash
-make down
-# OR
-#in active terminal
-ctrl+c or cmd+c 
+npm i
+npx concurrently "cd ./backend/cmd/server && go run main.go" "npm run dev --prefix ./frontend"
 ```
 
 ---
 
+## 🧠 Documentation & Key Concepts
 
+For an in-depth dive into the structure, API contract, database schema, and best practices, please refer to our full documentation on the **[GitHub Wiki](https://github.com/the-monkeys/capuchin/wiki)**.
 
-    
-## 🧠 Key Concepts Implemented (can be seen in comments)
-
-For an in-depth dive into the structure and patterns, please refer to our dedicated documentation:
-- [Backend Architecture Reference](backend_architecture.md)
-- [Backend Best Practices](backend_best_practices.md)
-- [Backend API Contract](backend_api.md)
-- [Backend Database Schema](backend_schema.md)
-
-* **Go:** Structs, Slices, JSON Marshalling, Modules, Package Exporting, Clean Architecture.
-* **React:** Functional Components, Hooks, API Integration (fetch, async/await), Controlled Inputs.
-* **Testing:** Included a robust `backend/verify_backend.sh` shell script to instantly orchestrate E2E integration tests against all API endpoints.
+Key concepts utilized:
+* **Go:** Structs, Slices, JSON Marshalling, Clean Architecture.
+* **React:** Functional Components, Custom Hooks (`useTodos`, `useAuth`), fetch wrappers.
+* **Testing:** `backend/test.sh` for E2E integration tests against API endpoints.
 * **Docker:** Multi-stage builds, Scratch images, Docker Compose overrides.
-* **General:** REST API Design, CORS, JSON Persistence, Refactoring,TypeScript(for styling), axios (for API calls)
-
+* **General:** REST API Design, JWT Auth isolation, Postgres parameterization.
 
 Long term plans:
 
