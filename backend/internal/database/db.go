@@ -5,12 +5,23 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"sync/atomic"
 	"time"
 
 	_ "github.com/lib/pq"
 )
 
-var DB *sql.DB
+var (
+	DB        *sql.DB
+	dbHealthy atomic.Bool
+)
+
+const (
+	dbMaxStartupAttempts  = 5
+	dbStartupBaseDelay    = 2 * time.Second
+	dbStartupMaxDelay     = 30 * time.Second
+	dbHealthCheckInterval = 10 * time.Second
+)
 
 func Connect() {
 	connStr := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
@@ -26,15 +37,61 @@ func Connect() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err = DB.Ping(); err != nil {
-		log.Fatal("Could not connect to database:", err)
-	}
 
 	// Conservative pool settings avoid exhausting DB connections in small deployments.
 	DB.SetMaxOpenConns(25)
 	DB.SetMaxIdleConns(5)
 	// Recycling connections helps recover from stale network state over long uptimes.
 	DB.SetConnMaxLifetime(5 * time.Minute)
+
+	if err = pingWithRetry(); err != nil {
+		log.Printf("Database unavailable after %d attempts, starting degraded: %v", dbMaxStartupAttempts, err)
+		dbHealthy.Store(false)
+	} else {
+		log.Println("Database connection established")
+		dbHealthy.Store(true)
+	}
+
+	go monitorDatabase()
+}
+
+func pingWithRetry() error {
+	delay := dbStartupBaseDelay
+	for attempt := 1; attempt <= dbMaxStartupAttempts; attempt++ {
+		if err := DB.Ping(); err == nil {
+			return nil
+		} else {
+			log.Printf("Database ping failed (attempt %d/%d): %v", attempt, dbMaxStartupAttempts, err)
+		}
+		if attempt < dbMaxStartupAttempts {
+			log.Printf("Retrying in %s...", delay)
+			time.Sleep(delay)
+			delay *= 2
+			if delay > dbStartupMaxDelay {
+				delay = dbStartupMaxDelay
+			}
+		}
+	}
+	return fmt.Errorf("database unreachable after %d attempts", dbMaxStartupAttempts)
+}
+func monitorDatabase() {
+	ticker := time.NewTicker(dbHealthCheckInterval)
+	defer ticker.Stop()
+	for range ticker.C {
+		if err := DB.Ping(); err != nil {
+			if dbHealthy.CompareAndSwap(true, false) {
+				log.Printf("Database connection lost: %v", err)
+			}
+			continue
+		}
+		if dbHealthy.CompareAndSwap(false, true) {
+			log.Println("Database connection restored")
+		}
+	}
+}
+
+func IsDBHealthy() bool {
+	return dbHealthy.Load()
 }
 
 func InitSchema() {
