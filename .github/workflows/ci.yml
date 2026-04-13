@@ -2,9 +2,12 @@ name: CI
 
 on:
   pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
+      - dev
   # Weekly run includes migration integration tests (needs Docker via testcontainers)
   schedule:
     - cron: "0 3 * * 1" # Every Monday at 03:00 UTC
