@@ -13,14 +13,14 @@ COPY . .
 # CGO_ENABLED=0 ensures a statically linked binary
 RUN CGO_ENABLED=0 GOOS=linux go build -o server cmd/server/main.go
 
-# Development Stage — pinned air version for reproducible dev builds
+# Development Stage - pinned air version for reproducible dev builds
 FROM deps AS dev
 
 RUN go install github.com/air-verse/air@v1.61.7
 
 CMD ["air", "-c", "air.toml"]
 
-# Final Stage — minimal image, non-root user for security
+# Final Stage - minimal image, non-root user for security
 FROM scratch
 
 WORKDIR /app

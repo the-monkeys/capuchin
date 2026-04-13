@@ -15,7 +15,7 @@ services:
       timeout: 5s
     image: postgres:17-alpine
     volumes:
-      # Separate dev volume — keeps dev data isolated from prod backup/data
+      # Separate dev volume - keeps dev data isolated from prod backup/data
       - capuchin-dev-data:/var/lib/postgresql/data
       - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
 

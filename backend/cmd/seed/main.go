@@ -41,7 +41,7 @@ func main() {
 		if database.IsHealthy() {
 			break
 		}
-		log.Println("seed: database not ready — waiting...")
+		log.Println("seed: database not ready - waiting...")
 		time.Sleep(1 * time.Second)
 	}
 	if !database.IsHealthy() {

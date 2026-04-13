@@ -25,7 +25,7 @@ import (
 )
 
 // migrateDB applies all pending goose migrations to db using the embedded FS.
-// This is the same logic as cmd/migrate — kept here so tests don't depend on
+// This is the same logic as cmd/migrate - kept here so tests don't depend on
 // the application package for migration concerns.
 func migrateDB(t *testing.T, db *sql.DB) {
 	t.Helper()
@@ -150,7 +150,7 @@ func TestP1_MigrationFileStructuralInvariants(t *testing.T) {
 // must return a row with that version's version_id and is_applied = true.
 func TestP2_MigrationApplicationRoundTrip(t *testing.T) {
 	// Feature: db-migrations-seeding, Property 2: Migration application round-trip
-	// Spin up one container and reuse it — container startup dominates test time.
+	// Spin up one container and reuse it - container startup dominates test time.
 	db := newTestDB(t)
 	migrateDB(t, db)
 
@@ -181,7 +181,7 @@ func TestP2_MigrationApplicationRoundTrip(t *testing.T) {
 // before and after the second invocation.
 func TestP3_MigrationIdempotency(t *testing.T) {
 	// Feature: db-migrations-seeding, Property 3: Migration idempotency
-	// Spin up one container — idempotency check doesn't need a fresh DB per iteration.
+	// Spin up one container - idempotency check doesn't need a fresh DB per iteration.
 	db := newTestDB(t)
 	migrateDB(t, db)
 
@@ -204,7 +204,7 @@ func TestP3_MigrationIdempotency(t *testing.T) {
 }
 
 // TestP4_AppServerDoesNotMigrate asserts that a fresh DB with no migrations run
-// does not have the goose_db_version table — proving the app server (which never
+// does not have the goose_db_version table - proving the app server (which never
 // calls goose) would not have this table.
 //
 // Feature: db-migrations-seeding, Property 4: The application server must
@@ -212,7 +212,7 @@ func TestP3_MigrationIdempotency(t *testing.T) {
 // responsibility of the dedicated migrate binary run in CI/CD.
 func TestP4_AppServerDoesNotMigrate(t *testing.T) {
 	// Feature: db-migrations-seeding, Property 4: App server does not migrate
-	// One fresh DB is sufficient — the invariant is structural, not data-dependent.
+	// One fresh DB is sufficient - the invariant is structural, not data-dependent.
 	db := newTestDB(t)
 
 	rapid.Check(t, func(rt *rapid.T) {
@@ -221,7 +221,7 @@ func TestP4_AppServerDoesNotMigrate(t *testing.T) {
 			rt.Fatalf("failed to ping db: %v", err)
 		}
 
-		// goose_db_version must not exist — migrations were never run by the app.
+		// goose_db_version must not exist - migrations were never run by the app.
 		var exists bool
 		err := db.QueryRow(`
 			SELECT EXISTS (
@@ -232,7 +232,7 @@ func TestP4_AppServerDoesNotMigrate(t *testing.T) {
 			rt.Fatalf("failed to check for goose_db_version: %v", err)
 		}
 		if exists {
-			rt.Error("goose_db_version exists — app server must not run migrations")
+			rt.Error("goose_db_version exists - app server must not run migrations")
 		}
 
 		log.Println("confirmed: app server did not trigger migrations")
@@ -244,10 +244,10 @@ func TestP4_AppServerDoesNotMigrate(t *testing.T) {
 //
 // Feature: db-migrations-seeding, Property 5: For any database state, running
 // the Seed_Runner twice in sequence must produce the same set of rows as
-// running it once — no duplicate rows, no errors on the second run.
+// running it once - no duplicate rows, no errors on the second run.
 func TestP5_SeedRunnerIdempotency(t *testing.T) {
 	// Feature: db-migrations-seeding, Property 5: Seed runner idempotency
-	// Spin up one container and reuse — seed inserts are idempotent via ON CONFLICT DO NOTHING.
+	// Spin up one container and reuse - seed inserts are idempotent via ON CONFLICT DO NOTHING.
 	db := newTestDB(t)
 	migrateDB(t, db)
 
@@ -332,7 +332,7 @@ func TestP5_SeedRunnerIdempotency(t *testing.T) {
 // version must appear in goose_db_version with is_applied = true exactly once.
 func TestP6_ConcurrentMigrationSafety(t *testing.T) {
 	// Feature: db-migrations-seeding, Property 6: Concurrent migration safety
-	// One container per test — concurrency is exercised within each rapid iteration.
+	// One container per test - concurrency is exercised within each rapid iteration.
 	db := newTestDB(t)
 
 	rapid.Check(t, func(rt *rapid.T) {

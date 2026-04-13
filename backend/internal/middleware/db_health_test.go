@@ -3,7 +3,7 @@ package middleware_test
 // Tests for DBHealthCheck middleware.
 //
 // Feature: migration-module-separation, Property 8: 503 returned while unhealthy.
-// No Docker or real Postgres required — health state is set directly via
+// No Docker or real Postgres required - health state is set directly via
 // database.SetHealthForTest.
 
 import (

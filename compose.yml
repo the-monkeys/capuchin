@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_HOST: ${POSTGRES_HOST}
-    # Healthcheck is informational — backend manages its own DB connection retry.
+    # Healthcheck is informational - backend manages its own DB connection retry.
     healthcheck:
       interval: 5s
       retries: 5
