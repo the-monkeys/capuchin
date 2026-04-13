@@ -48,7 +48,7 @@ func main() {
 		if database.IsHealthy() {
 			break
 		}
-		log.Println("waiting for database connection...")
+		log.Println("seed: database not ready — waiting...")
 		time.Sleep(1 * time.Second)
 	}
 	if !database.IsHealthy() {
@@ -69,7 +69,7 @@ func main() {
 	seedUsers(users)
 	seedTodos(todos)
 
-	log.Println("seed complete")
+	log.Println("seed: complete")
 }
 
 func seedUsers(users []seedUser) {
@@ -88,7 +88,7 @@ func seedUsers(users []seedUser) {
 		if err != nil {
 			log.Fatalf("failed to seed user %s: %v", u.email, err)
 		}
-		log.Printf("seeded user: %s", u.email)
+		log.Printf("seed: user inserted: %s", u.email)
 	}
 }
 
@@ -103,6 +103,6 @@ func seedTodos(todos []seedTodo) {
 		if err != nil {
 			log.Fatalf("failed to seed todo %q: %v", t.item, err)
 		}
-		log.Printf("seeded todo: %s", t.item)
+		log.Printf("seed: todo inserted: %s", t.item)
 	}
 }

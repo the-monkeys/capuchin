@@ -39,14 +39,14 @@ func Connect(cfg config.AppConfig) {
 		for {
 			db, err := sql.Open("postgres", connStr)
 			if err != nil {
-				log.Printf("database: failed to open connection: %v — retrying in %s", err, retryInterval)
+				log.Printf("database: connection open failed: %v — retry in %s", err, retryInterval)
 				atomic.StoreInt32(&dbHealthy, 0)
 				time.Sleep(retryInterval)
 				continue
 			}
 
 			if err := db.Ping(); err != nil {
-				log.Printf("database: ping failed: %v — retrying in %s", err, retryInterval)
+				log.Printf("database: ping failed: %v — retry in %s", err, retryInterval)
 				atomic.StoreInt32(&dbHealthy, 0)
 				_ = db.Close()
 				time.Sleep(retryInterval)
@@ -59,13 +59,13 @@ func Connect(cfg config.AppConfig) {
 
 			DB = db
 			atomic.StoreInt32(&dbHealthy, 1)
-			log.Println("database: connected successfully")
+			log.Println("database: connection established")
 
 			// Switch to a periodic health-check ping loop.
 			for {
 				time.Sleep(retryInterval)
 				if err := DB.Ping(); err != nil {
-					log.Printf("database: lost connection: %v — reconnecting", err)
+					log.Printf("database: connection lost: %v — reconnecting", err)
 					atomic.StoreInt32(&dbHealthy, 0)
 					_ = DB.Close()
 					DB = nil

@@ -68,5 +68,5 @@ func main() {
 		log.Fatal("goose migration error:", err)
 	}
 
-	log.Println("migrations applied successfully")
+	log.Println("migrate: migrations applied")
 }

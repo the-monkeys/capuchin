@@ -188,7 +188,7 @@ func TestInitSQLMatchesMigrationEndState(t *testing.T) {
 	// Feature: migration-module-separation, Property 9: init.sql schema matches goose migration end state
 
 	// Read init.sql from disk (relative to the migration/ module root).
-	initSQL, err := os.ReadFile("db/init.sql")
+	initSQL, err := os.ReadFile("../../db/init.sql")
 	if err != nil {
 		t.Fatalf("failed to read db/init.sql: %v", err)
 	}

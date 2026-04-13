@@ -21,7 +21,7 @@ func main() {
 		ticker := time.NewTicker(1 * time.Hour)
 		for range ticker.C {
 			if err := database.CleanupTokens(); err != nil {
-				log.Printf("Error cleaning up expired tokens: %v", err)
+				log.Printf("token cleanup: error: %v", err)
 			}
 		}
 	}()

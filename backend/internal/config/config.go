@@ -49,11 +49,11 @@ func init() {
 			log.Fatal("JWT_SECRET must be set in production")
 		}
 		jwtSecret = "dev-insecure-secret"
-		log.Println("WARNING: JWT_SECRET not set — using insecure default. Set JWT_SECRET in production.")
+		log.Println("config: JWT_SECRET unset — insecure default in use. Set JWT_SECRET in production.")
 	}
 	JWTKey = []byte(jwtSecret)
 
-	log.Println("Configuration loaded successfully.")
+	log.Println("config: loaded")
 }
 
 func loadEnvFile() {
@@ -71,7 +71,7 @@ func loadEnvFile() {
 	envPath, err := findEnvFile(cwd)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			log.Println("No .env file found in current or parent directories; using existing environment variables.")
+			log.Println("config: no .env file found — environment variables used as-is")
 			return
 		}
 		log.Fatalf("failed to locate .env file: %v", err)
@@ -81,7 +81,7 @@ func loadEnvFile() {
 		log.Fatalf("failed to load .env file %q: %v", envPath, err)
 	}
 
-	log.Printf("Loaded environment variables from %s", envPath)
+	log.Printf("config: env loaded from %s", envPath)
 }
 
 func findEnvFile(startDir string) (string, error) {
