@@ -24,11 +24,16 @@ func init() {
 		log.Fatal(err)
 	}
 
+	postgresHost := os.Getenv("POSTGRES_HOST")
+	if postgresHost == "" {
+		postgresHost = "localhost"
+	}
+
 	Config = AppConfig{
 		PostgresPassword: os.Getenv("POSTGRES_PASSWORD"),
 		PostgresUser:     os.Getenv("POSTGRES_USER"),
 		PostgresDB:       os.Getenv("POSTGRES_DB"),
-		PostgresHost:     os.Getenv("POSTGRES_HOST"),
+		PostgresHost:     postgresHost,
 		PostgresPort:     postgresPort,
 	}
 
