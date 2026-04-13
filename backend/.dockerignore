@@ -2,6 +2,7 @@
 vendor
 bin
 server
+tmp
 *.exe
 *.exe~
 *.dll

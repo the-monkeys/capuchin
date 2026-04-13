@@ -1,45 +1,40 @@
 services:
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: dev
-    container_name: capuchin-server
-    depends_on:
-      capuchin-db:
-        condition: service_healthy
-    environment:
-      MODE: dev
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-    ports:
-    - "${SERVER_PORT:-8080}:8080"
-    restart: unless-stopped
-    volumes:
-    - ./backend:/app
-
   capuchin-db:
     container_name: capuchin-db
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-
     ports:
       - "5432:5432"
-
     healthcheck:
       interval: 5s
       retries: 5
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       timeout: 5s
     image: postgres:17-alpine
     volumes:
-    - ./backup:/var/lib/postgresql
-    - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      # Separate dev volume - keeps dev data isolated from prod backup/data
+      - capuchin-dev-data:/var/lib/postgresql/data
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: capuchin-server
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: capuchin-db
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
 
   frontend:
     build:
@@ -53,6 +48,8 @@ services:
       - "${CLIENT_PORT:-5173}:5173"
     restart: unless-stopped
     volumes:
-    - ./frontend:/app
-    - /app/node_modules
+      - ./frontend:/app
+      - /app/node_modules
 
+volumes:
+  capuchin-dev-data:

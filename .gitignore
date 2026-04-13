@@ -44,6 +44,7 @@ dist-ssr/
 # Test binary, built with `go test -c`
 *.test
 server
+test.sh
 
 # Go workspace file
 go.work
@@ -97,3 +98,8 @@ crash.*.log
 # personal 
 docs/ideas.md
 backup/
+.kiro
+
+
+# removing for now
+.github/

@@ -5,50 +5,39 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: ${POSTGRES_HOST}
+    # Healthcheck is informational - backend manages its own DB connection retry.
     healthcheck:
       interval: 5s
       retries: 5
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       timeout: 5s
     image: postgres:17-alpine
     volumes:
-    - ./backup:/var/lib/postgresql
-    - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
-
+      - ./backup/data:/var/lib/postgresql/data
 
   backend:
     container_name: capuchin-server
-
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
       - "${SERVER_PORT:-8080}:8080"
-    volumes:
-      - ./backend/db:/app/db
     restart: unless-stopped
-
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-
-    depends_on:
-      capuchin-db:
-        condition: service_healthy
+      POSTGRES_HOST: capuchin-db
+      JWT_SECRET: ${JWT_SECRET}
 
   frontend:
     container_name: capuchin-client
-
     build:
       context: ./frontend
       dockerfile: Dockerfile
       target: prod
       args:
         VITE_API_URL: ${VITE_API_URL}
-
     ports:
       - "${CLIENT_PORT:-8000}:80"
     restart: unless-stopped

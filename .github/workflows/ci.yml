@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+      - dev
+  # Weekly run includes migration integration tests (needs Docker via testcontainers)
+  schedule:
+    - cron: "0 3 * * 1" # Every Monday at 03:00 UTC
+
+jobs:
+  backend:
+    name: Backend — build, vet, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.5"
+          cache-dependency-path: backend/go.sum
+
+      - name: Build
+        working-directory: backend
+        run: go build ./...
+
+      - name: Vet
+        working-directory: backend
+        run: go vet ./...
+
+      - name: Unit tests (no Docker required)
+        working-directory: backend
+        run: go test ./...
+
+  migration:
+    name: Migration module — build & vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.5"
+          cache-dependency-path: backend/migration/go.sum
+
+      - name: Build
+        working-directory: backend/migration
+        run: go build ./...
+
+      - name: Vet
+        working-directory: backend/migration
+        run: go vet ./...
+
+  migration-integration:
+    name: Migration integration tests (Docker)
+    runs-on: ubuntu-latest
+    # Only run on schedule (weekly) — these are slow due to testcontainers
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.5"
+          cache-dependency-path: backend/migration/go.sum
+
+      - name: Integration tests (requires Docker)
+        working-directory: backend/migration
+        run: go test ./... -v -timeout 10m
