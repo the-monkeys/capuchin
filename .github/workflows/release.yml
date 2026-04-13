@@ -30,7 +30,7 @@ jobs:
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-          POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+          POSTGRES_PORT: ${{ secrets.POSTGRES_PORT != '' && secrets.POSTGRES_PORT || '5432' }}
         run: |
           go run ./cmd/migrate
           echo "success=true" >> $GITHUB_OUTPUT
@@ -56,7 +56,7 @@ jobs:
         run: |
           pg_dump \
             --host=${{ secrets.POSTGRES_HOST }} \
-            --port=${{ secrets.POSTGRES_PORT || 5432 }} \
+            --port=${{ secrets.POSTGRES_PORT != '' && secrets.POSTGRES_PORT || '5432' }} \
             --username=${{ secrets.POSTGRES_USER }} \
             --dbname=${{ secrets.POSTGRES_DB }} \
             --schema-only \
@@ -92,11 +92,10 @@ jobs:
       # All prod DB connection details are available as secrets (see migrate job).
       # -----------------------------------------------------------------------
 
-      - name: Build migration Docker image
+      - name: Build backend Docker image
         run: |
           docker build \
-            -f backend/migration/Dockerfile \
-            -t capuchin-migration:${{ github.sha }} \
+            -t capuchin-backend:${{ github.sha }} \
             ./backend
 
       # Example: push to a registry

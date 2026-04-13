@@ -28,11 +28,11 @@ const retryInterval = 5 * time.Second
 func Connect(cfg config.AppConfig) {
 	connStr := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
-		cfg.POSTGRES_HOST,
-		cfg.POSTGRES_USER,
-		cfg.POSTGRES_PASSWORD,
-		cfg.POSTGRES_DB,
-		cfg.POSTGRES_PORT,
+		cfg.PostgresHost,
+		cfg.PostgresUser,
+		cfg.PostgresPassword,
+		cfg.PostgresDB,
+		cfg.PostgresPort,
 	)
 
 	go func() {
@@ -83,14 +83,11 @@ func IsHealthy() bool {
 }
 
 // CleanupTokens deletes expired blacklisted tokens.
+// Returns an error if the DB is not yet connected.
 func CleanupTokens() error {
+	if DB == nil {
+		return fmt.Errorf("database: not connected")
+	}
 	_, err := DB.Exec("DELETE FROM blacklisted_tokens WHERE expired_at < NOW()")
 	return err
-}
-
-// DBHealthyPtr returns a pointer to the internal dbHealthy atomic flag.
-// Intended for use in tests that need to directly control health state
-// without a real database connection.
-func DBHealthyPtr() *int32 {
-	return &dbHealthy
 }

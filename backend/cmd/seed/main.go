@@ -10,6 +10,7 @@ import (
 	"capuchin/internal/config"
 	"capuchin/internal/database"
 	"log"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -36,11 +37,14 @@ type seedTodo struct {
 }
 
 func main() {
-	// config.init() runs automatically on import; Connect() needs explicit call.
+	if os.Getenv("APP_ENV") == "production" {
+		log.Fatal("seed must not be run in production")
+	}
+
 	database.Connect(config.Config)
 
 	// Wait for the background goroutine to establish the DB connection.
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		if database.IsHealthy() {
 			break
 		}

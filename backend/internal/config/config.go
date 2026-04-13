@@ -13,11 +13,11 @@ import (
 )
 
 type AppConfig struct {
-	POSTGRES_PASSWORD string
-	POSTGRES_USER     string
-	POSTGRES_DB       string
-	POSTGRES_HOST     string
-	POSTGRES_PORT     int
+	PostgresPassword string
+	PostgresUser     string
+	PostgresDB       string
+	PostgresHost     string
+	PostgresPort     int
 }
 
 var Config AppConfig
@@ -32,11 +32,11 @@ func init() {
 	}
 
 	Config = AppConfig{
-		POSTGRES_PASSWORD: os.Getenv("POSTGRES_PASSWORD"),
-		POSTGRES_USER:     os.Getenv("POSTGRES_USER"),
-		POSTGRES_DB:       os.Getenv("POSTGRES_DB"),
-		POSTGRES_HOST:     os.Getenv("POSTGRES_HOST"),
-		POSTGRES_PORT:     postgresPort,
+		PostgresPassword: os.Getenv("POSTGRES_PASSWORD"),
+		PostgresUser:     os.Getenv("POSTGRES_USER"),
+		PostgresDB:       os.Getenv("POSTGRES_DB"),
+		PostgresHost:     os.Getenv("POSTGRES_HOST"),
+		PostgresPort:     postgresPort,
 	}
 
 	if err := validateDatabaseConfig(Config); err != nil {
@@ -45,8 +45,11 @@ func init() {
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		jwtSecret = "secret"
-		log.Println("WARNING: JWT_SECRET not set or empty; using default insecure secret. Set JWT_SECRET in production.")
+		if os.Getenv("APP_ENV") == "production" {
+			log.Fatal("JWT_SECRET must be set in production")
+		}
+		jwtSecret = "dev-insecure-secret"
+		log.Println("WARNING: JWT_SECRET not set — using insecure default. Set JWT_SECRET in production.")
 	}
 	JWTKey = []byte(jwtSecret)
 
@@ -54,6 +57,12 @@ func init() {
 }
 
 func loadEnvFile() {
+	// In production, environment variables are injected by the orchestrator.
+	// Skip .env file discovery to avoid accidentally loading stale files.
+	if os.Getenv("APP_ENV") == "production" {
+		return
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("failed to determine current working directory: %v", err)
@@ -117,16 +126,16 @@ func postgresPortFromEnv() (int, error) {
 func validateDatabaseConfig(cfg AppConfig) error {
 	missing := make([]string, 0, 4)
 
-	if cfg.POSTGRES_USER == "" {
+	if cfg.PostgresUser == "" {
 		missing = append(missing, "POSTGRES_USER")
 	}
-	if cfg.POSTGRES_PASSWORD == "" {
+	if cfg.PostgresPassword == "" {
 		missing = append(missing, "POSTGRES_PASSWORD")
 	}
-	if cfg.POSTGRES_DB == "" {
+	if cfg.PostgresDB == "" {
 		missing = append(missing, "POSTGRES_DB")
 	}
-	if cfg.POSTGRES_HOST == "" {
+	if cfg.PostgresHost == "" {
 		missing = append(missing, "POSTGRES_HOST")
 	}
 	if len(missing) > 0 {
