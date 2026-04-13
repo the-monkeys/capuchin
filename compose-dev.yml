@@ -16,7 +16,7 @@ services:
     image: postgres:17-alpine
     volumes:
       - ./backup/data:/var/lib/postgresql/data
-      - ./backend/migration/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   backend:
     build:
@@ -24,9 +24,6 @@ services:
       dockerfile: Dockerfile
       target: dev
     container_name: capuchin-server
-    depends_on:
-      capuchin-db:
-        condition: service_healthy
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
