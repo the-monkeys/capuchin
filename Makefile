@@ -36,10 +36,13 @@ backend:
 	cd backend && air
 
 migrate:
-	cd backend && POSTGRES_HOST=localhost go run ./cmd/migrate
+	cd backend/migration && POSTGRES_HOST=localhost go run ./cmd/migrate
+
+migrate-build:
+	docker build -f backend/migration/Dockerfile -t capuchin-migration ./backend
 
 seed:
 	cd backend && POSTGRES_HOST=localhost go run ./cmd/seed
 
-.PHONY:  dev dev-logs dev-down prod logs down migrate seed
+.PHONY: dev dev-logs dev-down prod logs down migrate migrate-build seed
 
