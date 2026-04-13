@@ -99,3 +99,7 @@ crash.*.log
 docs/ideas.md
 backup/
 .kiro
+
+
+# removing for now
+.github/
