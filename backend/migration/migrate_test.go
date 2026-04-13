@@ -41,7 +41,7 @@ func migrateDBErr(db *sql.DB) error {
 	if err := goose.SetDialect("postgres"); err != nil {
 		return fmt.Errorf("goose dialect: %w", err)
 	}
-	if err := goose.Up(db, "migrations"); err != nil {
+	if err := goose.Up(db, "versions"); err != nil {
 		return fmt.Errorf("goose up: %w", err)
 	}
 	return nil
@@ -93,7 +93,7 @@ func TestP1_MigrationFileStructuralInvariants(t *testing.T) {
 	createTableSafeRe := regexp.MustCompile(`(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS`)
 	createTableAnyRe := regexp.MustCompile(`(?i)CREATE\s+TABLE\b`)
 
-	entries, err := fs.ReadDir(capuchindb.Migrations, "migrations")
+	entries, err := fs.ReadDir(capuchindb.Migrations, "versions")
 	if err != nil {
 		t.Fatalf("failed to read migrations dir: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestP1_MigrationFileStructuralInvariants(t *testing.T) {
 		}
 		prevPrefix = prefix
 
-		content, err := capuchindb.Migrations.ReadFile("migrations/" + name)
+		content, err := capuchindb.Migrations.ReadFile("versions/" + name)
 		if err != nil {
 			t.Fatalf("failed to read migration file %q: %v", name, err)
 		}

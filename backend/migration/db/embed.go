@@ -6,5 +6,5 @@ import "embed"
 
 // Migrations holds all goose SQL migration files embedded at compile time.
 //
-//go:embed migrations/*.sql
+//go:embed versions/*.sql
 var Migrations embed.FS

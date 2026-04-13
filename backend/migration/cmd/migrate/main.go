@@ -64,7 +64,7 @@ func main() {
 		log.Fatal("goose dialect error:", err)
 	}
 
-	if err := goose.Up(db, "migrations"); err != nil {
+	if err := goose.Up(db, "versions"); err != nil {
 		log.Fatal("goose migration error:", err)
 	}
 
