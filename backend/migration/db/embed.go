@@ -1,5 +1,5 @@
 // Package db exposes the embedded migration files so they can be used by
-// both the database package and tests without duplicating the embed directive.
+// the migration runner and tests without duplicating the embed directive.
 package db
 
 import "embed"

@@ -10,6 +10,7 @@ import (
 	"capuchin/internal/config"
 	"capuchin/internal/database"
 	"log"
+	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -36,8 +37,19 @@ type seedTodo struct {
 
 func main() {
 	// config.init() runs automatically on import; Connect() needs explicit call.
-	_ = config.Config
-	database.Connect()
+	database.Connect(config.Config)
+
+	// Wait for the background goroutine to establish the DB connection.
+	for i := 0; i < 30; i++ {
+		if database.IsHealthy() {
+			break
+		}
+		log.Println("waiting for database connection...")
+		time.Sleep(1 * time.Second)
+	}
+	if !database.IsHealthy() {
+		log.Fatal("database not available after 30 seconds")
+	}
 
 	users := []seedUser{
 		{id: user1ID, email: "alice@example.com", password: "password123"},

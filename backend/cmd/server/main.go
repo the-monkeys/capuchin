@@ -1,8 +1,10 @@
 package main
 
 import (
+	"capuchin/internal/config"
 	"capuchin/internal/database"
 	"capuchin/internal/handlers"
+	"capuchin/internal/middleware"
 	"capuchin/internal/routes"
 	"capuchin/internal/services"
 	"log"
@@ -12,7 +14,7 @@ import (
 )
 
 func main() {
-	database.Connect()
+	database.Connect(config.Config)
 
 	// Periodic cleanup prevents the revoked-token table from growing forever.
 	go func() {
@@ -46,6 +48,9 @@ func main() {
 		}
 		c.Next()
 	})
+
+	// Guard all routes — returns 503 while DB is unreachable.
+	r.Use(middleware.DBHealthCheck())
 
 	// Keep route wiring centralized so auth boundaries are easy to audit.
 	routes.SetupRoutes(r, authHandler, todoHandler)

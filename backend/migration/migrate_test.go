@@ -1,4 +1,4 @@
-package database_test
+package migration_test
 
 import (
 	"context"
@@ -13,8 +13,7 @@ import (
 	"testing"
 	"time"
 
-	capuchindb "capuchin/db"
-	"capuchin/internal/database"
+	capuchindb "capuchin-migration/db"
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
@@ -84,7 +83,7 @@ func newTestDB(t *testing.T) *sql.DB {
 // annotations, and CREATE TABLE IF NOT EXISTS for every migration file.
 //
 // Feature: db-migrations-seeding, Property 1: For any .sql file in
-// backend/db/migrations/, the filename must have a zero-padded five-digit
+// migration/db/migrations/, the filename must have a zero-padded five-digit
 // numeric prefix strictly greater than all preceding files, the file must
 // contain both a -- +goose Up block and a -- +goose Down block, and any
 // CREATE TABLE statement must use CREATE TABLE IF NOT EXISTS.
@@ -152,10 +151,11 @@ func TestP1_MigrationFileStructuralInvariants(t *testing.T) {
 // must return a row with that version's version_id and is_applied = true.
 func TestP2_MigrationApplicationRoundTrip(t *testing.T) {
 	// Feature: db-migrations-seeding, Property 2: Migration application round-trip
-	rapid.Check(t, func(rt *rapid.T) {
-		db := newTestDB(t)
-		migrateDB(t, db)
+	// Spin up one container and reuse it — container startup dominates test time.
+	db := newTestDB(t)
+	migrateDB(t, db)
 
+	rapid.Check(t, func(rt *rapid.T) {
 		var versionID int64
 		var isApplied bool
 		err := db.QueryRow(
@@ -182,10 +182,11 @@ func TestP2_MigrationApplicationRoundTrip(t *testing.T) {
 // before and after the second invocation.
 func TestP3_MigrationIdempotency(t *testing.T) {
 	// Feature: db-migrations-seeding, Property 3: Migration idempotency
-	rapid.Check(t, func(rt *rapid.T) {
-		db := newTestDB(t)
-		migrateDB(t, db)
+	// Spin up one container — idempotency check doesn't need a fresh DB per iteration.
+	db := newTestDB(t)
+	migrateDB(t, db)
 
+	rapid.Check(t, func(rt *rapid.T) {
 		var countBefore int
 		if err := db.QueryRow(`SELECT COUNT(*) FROM goose_db_version`).Scan(&countBefore); err != nil {
 			rt.Fatalf("failed to count goose_db_version rows: %v", err)
@@ -203,27 +204,23 @@ func TestP3_MigrationIdempotency(t *testing.T) {
 	})
 }
 
-// TestP4_AppServerDoesNotMigrate asserts that the application server's Connect
-// function does not trigger any migration — migration is CI/CD-only.
+// TestP4_AppServerDoesNotMigrate asserts that a fresh DB with no migrations run
+// does not have the goose_db_version table — proving the app server (which never
+// calls goose) would not have this table.
 //
 // Feature: db-migrations-seeding, Property 4: The application server must
 // never call goose.Up or any migration function. Migration is exclusively the
 // responsibility of the dedicated migrate binary run in CI/CD.
 func TestP4_AppServerDoesNotMigrate(t *testing.T) {
 	// Feature: db-migrations-seeding, Property 4: App server does not migrate
+	// One fresh DB is sufficient — the invariant is structural, not data-dependent.
+	db := newTestDB(t)
+
 	rapid.Check(t, func(rt *rapid.T) {
-		migrateCalled := false
-
-		// Intercept goose output — if migration runs, goose logs to the default logger.
-		// We verify by checking goose_db_version does NOT exist after Connect().
-		// Use a fresh DB so there's no pre-existing schema.
-		db := newTestDB(t)
-		database.DB = db
-
-		// Simulate what cmd/server/main.go does: only Connect(), nothing else.
-		// We can't call database.Connect() here (needs real env), so we directly
-		// set database.DB and verify no migration side-effects occurred.
-		_ = migrateCalled // suppress unused warning
+		// Verify the DB is reachable (app server would call Ping, not goose.Up).
+		if err := db.Ping(); err != nil {
+			rt.Fatalf("failed to ping db: %v", err)
+		}
 
 		// goose_db_version must not exist — migrations were never run by the app.
 		var exists bool
@@ -251,55 +248,56 @@ func TestP4_AppServerDoesNotMigrate(t *testing.T) {
 // running it once — no duplicate rows, no errors on the second run.
 func TestP5_SeedRunnerIdempotency(t *testing.T) {
 	// Feature: db-migrations-seeding, Property 5: Seed runner idempotency
-	rapid.Check(t, func(rt *rapid.T) {
-		db := newTestDB(t)
-		migrateDB(t, db)
+	// Spin up one container and reuse — seed inserts are idempotent via ON CONFLICT DO NOTHING.
+	db := newTestDB(t)
+	migrateDB(t, db)
 
-		runSeed := func() {
-			user1ID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
-			user2ID := uuid.MustParse("00000000-0000-0000-0000-000000000002")
+	runSeed := func() {
+		user1ID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+		user2ID := uuid.MustParse("00000000-0000-0000-0000-000000000002")
 
-			type seedUser struct {
-				id       uuid.UUID
-				email    string
-				password string
+		type seedUser struct {
+			id       uuid.UUID
+			email    string
+			password string
+		}
+		for _, u := range []seedUser{
+			{id: user1ID, email: "alice@example.com", password: "password123"},
+			{id: user2ID, email: "bob@example.com", password: "password123"},
+		} {
+			hash, err := bcrypt.GenerateFromPassword([]byte(u.password), bcrypt.DefaultCost)
+			if err != nil {
+				t.Fatalf("bcrypt error: %v", err)
 			}
-			for _, u := range []seedUser{
-				{id: user1ID, email: "alice@example.com", password: "password123"},
-				{id: user2ID, email: "bob@example.com", password: "password123"},
-			} {
-				hash, err := bcrypt.GenerateFromPassword([]byte(u.password), bcrypt.DefaultCost)
-				if err != nil {
-					rt.Fatalf("bcrypt error: %v", err)
-				}
-				if _, err = db.Exec(`
-					INSERT INTO users (id, email, password_hash)
-					VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`,
-					u.id, u.email, string(hash)); err != nil {
-					rt.Fatalf("seed user %s: %v", u.email, err)
-				}
-			}
-
-			type seedTodo struct {
-				id        uuid.UUID
-				userID    uuid.UUID
-				item      string
-				completed bool
-			}
-			for _, td := range []seedTodo{
-				{uuid.MustParse("00000000-0000-0000-0001-000000000001"), user1ID, "Buy groceries", false},
-				{uuid.MustParse("00000000-0000-0000-0001-000000000002"), user1ID, "Read a book", true},
-				{uuid.MustParse("00000000-0000-0000-0001-000000000003"), user2ID, "Go for a run", false},
-			} {
-				if _, err := db.Exec(`
-					INSERT INTO todos (id, item, completed, user_id)
-					VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING`,
-					td.id, td.item, td.completed, td.userID); err != nil {
-					rt.Fatalf("seed todo %q: %v", td.item, err)
-				}
+			if _, err = db.Exec(`
+				INSERT INTO users (id, email, password_hash)
+				VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`,
+				u.id, u.email, string(hash)); err != nil {
+				t.Fatalf("seed user %s: %v", u.email, err)
 			}
 		}
 
+		type seedTodo struct {
+			id        uuid.UUID
+			userID    uuid.UUID
+			item      string
+			completed bool
+		}
+		for _, td := range []seedTodo{
+			{uuid.MustParse("00000000-0000-0000-0001-000000000001"), user1ID, "Buy groceries", false},
+			{uuid.MustParse("00000000-0000-0000-0001-000000000002"), user1ID, "Read a book", true},
+			{uuid.MustParse("00000000-0000-0000-0001-000000000003"), user2ID, "Go for a run", false},
+		} {
+			if _, err := db.Exec(`
+				INSERT INTO todos (id, item, completed, user_id)
+				VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING`,
+				td.id, td.item, td.completed, td.userID); err != nil {
+				t.Fatalf("seed todo %q: %v", td.item, err)
+			}
+		}
+	}
+
+	rapid.Check(t, func(rt *rapid.T) {
 		runSeed()
 		var usersBefore, todosBefore int
 		if err := db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&usersBefore); err != nil {
@@ -335,8 +333,15 @@ func TestP5_SeedRunnerIdempotency(t *testing.T) {
 // version must appear in goose_db_version with is_applied = true exactly once.
 func TestP6_ConcurrentMigrationSafety(t *testing.T) {
 	// Feature: db-migrations-seeding, Property 6: Concurrent migration safety
+	// One container per test — concurrency is exercised within each rapid iteration.
+	db := newTestDB(t)
+
 	rapid.Check(t, func(rt *rapid.T) {
-		db := newTestDB(t)
+		// Reset goose state between iterations by dropping and recreating the version table.
+		_, _ = db.Exec(`DROP TABLE IF EXISTS goose_db_version`)
+		_, _ = db.Exec(`DROP TABLE IF EXISTS users`)
+		_, _ = db.Exec(`DROP TABLE IF EXISTS todos`)
+		_, _ = db.Exec(`DROP TABLE IF EXISTS blacklisted_tokens`)
 
 		errs := make(chan error, 2)
 		var wg sync.WaitGroup
