@@ -3,7 +3,6 @@ vendor
 bin
 server
 tmp
-migration
 *.exe
 *.exe~
 *.dll

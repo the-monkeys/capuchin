@@ -47,12 +47,15 @@ backend: ## Start backend with hot reload (requires air: go install github.com/a
 # ── Database ──────────────────────────────────────────────────────────────────
 
 migrate: ## Run migrations against localhost DB (reads .env for credentials)
-	@set -a && . ./.env.example && set +a && cd backend/migration && go run ./cmd/migrate
+	@set -a && . ./.env.example && set +a && export POSTGRES_HOST=localhost && cd backend/migration && go run ./cmd/migrate up
+
+migrate-down: ## Roll back the last migration against localhost DB
+	@set -a && . ./.env.example && set +a && export POSTGRES_HOST=localhost && cd backend/migration && go run ./cmd/migrate down
 
 seed: ## Seed dev database with sample data (reads .env.example for credentials)
-	@set -a && . ./.env.example && set +a && POSTGRES_HOST=localhost cd backend && go run ./cmd/seed
+	@set -a && . ./.env.example && set +a && export POSTGRES_HOST=localhost && cd backend && go run ./cmd/seed
 
 migrate-build: ## Build migration Docker image
 	docker build -f backend/migration/Dockerfile -t capuchin-migration ./backend
 
-.PHONY: help dev dev-logs dev-down clean prod logs down frontend backend migrate seed migrate-build
+.PHONY: help dev dev-logs dev-down clean prod logs down frontend backend migrate migrate-down seed migrate-build

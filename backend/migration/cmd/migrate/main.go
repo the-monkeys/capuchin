@@ -1,10 +1,10 @@
-// migrate applies pending database migrations and exits.
+// migrate applies or rolls back database migrations and exits.
 // Run this as a one-off job (CI/CD step or init container) before deploying
 // app server instances.
 //
 // Usage:
 //
-//	go run ./cmd/migrate
+//	go run ./cmd/migrate [up|down]
 package main
 
 import (
@@ -64,9 +64,23 @@ func main() {
 		log.Fatal("goose dialect error:", err)
 	}
 
-	if err := goose.Up(db, "versions"); err != nil {
-		log.Fatal("goose migration error:", err)
+	cmd := "up"
+	if len(os.Args) > 1 {
+		cmd = os.Args[1]
 	}
 
-	log.Println("migrate: migrations applied")
+	switch cmd {
+	case "up":
+		if err := goose.Up(db, "versions"); err != nil {
+			log.Fatal("goose migration error:", err)
+		}
+		log.Println("migrate: migrations applied")
+	case "down":
+		if err := goose.Down(db, "versions"); err != nil {
+			log.Fatal("goose migration error:", err)
+		}
+		log.Println("migrate: rolled back one migration")
+	default:
+		log.Fatalf("unknown command %q — use 'up' or 'down'", cmd)
+	}
 }
