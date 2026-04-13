@@ -15,7 +15,6 @@ import (
 
 	capuchindb "capuchin-migration/db"
 
-	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 	"github.com/testcontainers/testcontainers-go"
@@ -253,11 +252,11 @@ func TestP5_SeedRunnerIdempotency(t *testing.T) {
 	migrateDB(t, db)
 
 	runSeed := func() {
-		user1ID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
-		user2ID := uuid.MustParse("00000000-0000-0000-0000-000000000002")
+		user1ID := int64(1)
+		user2ID := int64(2)
 
 		type seedUser struct {
-			id       uuid.UUID
+			id       int64
 			email    string
 			password string
 		}
@@ -278,15 +277,15 @@ func TestP5_SeedRunnerIdempotency(t *testing.T) {
 		}
 
 		type seedTodo struct {
-			id        uuid.UUID
-			userID    uuid.UUID
+			id        int64
+			userID    int64
 			item      string
 			completed bool
 		}
 		for _, td := range []seedTodo{
-			{uuid.MustParse("00000000-0000-0000-0001-000000000001"), user1ID, "Buy groceries", false},
-			{uuid.MustParse("00000000-0000-0000-0001-000000000002"), user1ID, "Read a book", true},
-			{uuid.MustParse("00000000-0000-0000-0001-000000000003"), user2ID, "Go for a run", false},
+			{1, user1ID, "Buy groceries", false},
+			{2, user1ID, "Read a book", true},
+			{3, user2ID, "Go for a run", false},
 		} {
 			if _, err := db.Exec(`
 				INSERT INTO todos (id, item, completed, user_id)

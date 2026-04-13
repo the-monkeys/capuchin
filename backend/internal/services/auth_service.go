@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -39,12 +38,11 @@ func (s *authService) Signup(email, password string) (*models.User, error) {
 	}
 
 	u := &models.User{
-		ID:           uuid.New(),
 		Email:        email,
 		PasswordHash: string(hash),
 	}
 
-	_, err = database.DB.Exec("INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)", u.ID, u.Email, u.PasswordHash)
+	err = database.DB.QueryRow("INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id", u.Email, u.PasswordHash).Scan(&u.ID)
 	if err != nil {
 		errStr := err.Error()
 		// Convert storage-specific duplicate key errors into a stable domain error for handlers.
@@ -71,7 +69,7 @@ func (s *authService) Login(email, password string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": u.ID.String(),
+		"user_id": u.ID,
 		"email":   u.Email,
 		// Short-lived tokens reduce blast radius if a token is leaked.
 		"exp": time.Now().Add(time.Hour * 72).Unix(),

@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"capuchin/internal/services"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type TodoHandler struct {
@@ -16,7 +16,7 @@ func NewTodoHandler(svc services.TodoService) *TodoHandler {
 }
 
 func (h *TodoHandler) GetTodos(c *gin.Context) {
-	userID := c.MustGet("userID").(uuid.UUID)
+	userID := c.MustGet("userID").(int64)
 	todos, err := h.todoService.GetTodos(userID)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to get todos"})
@@ -26,7 +26,7 @@ func (h *TodoHandler) GetTodos(c *gin.Context) {
 }
 
 func (h *TodoHandler) AddTodo(c *gin.Context) {
-	userID := c.MustGet("userID").(uuid.UUID)
+	userID := c.MustGet("userID").(int64)
 	var req struct {
 		Item      string `json:"item" binding:"required"`
 		Completed bool   `json:"completed"`
@@ -45,9 +45,8 @@ func (h *TodoHandler) AddTodo(c *gin.Context) {
 }
 
 func (h *TodoHandler) UpdateTodo(c *gin.Context) {
-	userID := c.MustGet("userID").(uuid.UUID)
-	idParam := c.Param("id")
-	id, err := uuid.Parse(idParam)
+	userID := c.MustGet("userID").(int64)
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(400, gin.H{"error": "invalid id"})
 		return
@@ -75,9 +74,8 @@ func (h *TodoHandler) UpdateTodo(c *gin.Context) {
 }
 
 func (h *TodoHandler) DeleteTodo(c *gin.Context) {
-	userID := c.MustGet("userID").(uuid.UUID)
-	idParam := c.Param("id")
-	id, err := uuid.Parse(idParam)
+	userID := c.MustGet("userID").(int64)
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(400, gin.H{"error": "invalid id"})
 		return

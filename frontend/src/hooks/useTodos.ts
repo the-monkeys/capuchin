@@ -3,7 +3,11 @@ import { todosApi } from "@/lib/api"
 import type { Todo, FilterType } from "@/types"
 
 const GUEST_KEY = "capuchin_guest_todos"
-const genId = () => crypto.randomUUID()
+let _guestIdCounter = 0
+const genId = () => {
+  _guestIdCounter -= 1
+  return String(_guestIdCounter)
+}
 
 const loadGuestTodos = (): Todo[] => {
   try {

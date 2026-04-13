@@ -1,15 +1,15 @@
 -- +goose Up
 CREATE TABLE IF NOT EXISTS users (
-    id          UUID        PRIMARY KEY,
+    id          BIGSERIAL   PRIMARY KEY,
     email       TEXT        UNIQUE NOT NULL,
     password_hash TEXT      NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS todos (
-    id          UUID        PRIMARY KEY,
+    id          BIGSERIAL   PRIMARY KEY,
     item        TEXT        NOT NULL,
     completed   BOOLEAN     NOT NULL DEFAULT FALSE,
-    user_id     UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    user_id     BIGINT      NOT NULL REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS blacklisted_tokens (

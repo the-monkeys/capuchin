@@ -13,25 +13,18 @@ import (
 	"os"
 	"time"
 
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Fixed UUIDs keep seed data stable across runs so foreign keys stay consistent.
-var (
-	user1ID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
-	user2ID = uuid.MustParse("00000000-0000-0000-0000-000000000002")
-)
-
 type seedUser struct {
-	id       uuid.UUID
+	id       int64
 	email    string
 	password string
 }
 
 type seedTodo struct {
-	id        uuid.UUID
-	userID    uuid.UUID
+	id        int64
+	userID    int64
 	item      string
 	completed bool
 }
@@ -56,14 +49,14 @@ func main() {
 	}
 
 	users := []seedUser{
-		{id: user1ID, email: "alice@example.com", password: "password123"},
-		{id: user2ID, email: "bob@example.com", password: "password123"},
+		{id: 1, email: "alice@example.com", password: "password123"},
+		{id: 2, email: "bob@example.com", password: "password123"},
 	}
 
 	todos := []seedTodo{
-		{id: uuid.MustParse("00000000-0000-0000-0001-000000000001"), userID: user1ID, item: "Buy groceries", completed: false},
-		{id: uuid.MustParse("00000000-0000-0000-0001-000000000002"), userID: user1ID, item: "Read a book", completed: true},
-		{id: uuid.MustParse("00000000-0000-0000-0001-000000000003"), userID: user2ID, item: "Go for a run", completed: false},
+		{id: 1, userID: 1, item: "Buy groceries", completed: false},
+		{id: 2, userID: 1, item: "Read a book", completed: true},
+		{id: 3, userID: 2, item: "Go for a run", completed: false},
 	}
 
 	seedUsers(users)

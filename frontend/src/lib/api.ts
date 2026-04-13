@@ -37,7 +37,7 @@ export const authApi = {
 // Todo
 
 const normalise = (raw: Record<string, unknown>): Todo => ({
-  id: String(raw.id ?? raw.ID),
+  id: Number(raw.id ?? raw.ID),
   item: String(raw.item ?? raw.Item ?? ""),
   completed: Boolean(raw.completed ?? raw.Completed ?? false),
 })

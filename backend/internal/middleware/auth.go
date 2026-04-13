@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 )
 
 func AuthRequired() gin.HandlerFunc {
@@ -40,20 +39,14 @@ func AuthRequired() gin.HandlerFunc {
 		}
 
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-
-			raw, ok := claims["user_id"].(string)
+			// JWT numbers are decoded as float64 by encoding/json.
+			raw, ok := claims["user_id"].(float64)
 			if !ok {
 				c.AbortWithStatusJSON(401, gin.H{"error": "invalid token claims"})
 				return
 			}
-			// Parse into UUID once so handlers can rely on a strongly typed user identity.
-			uid, err := uuid.Parse(raw)
-			if err != nil {
-				c.AbortWithStatusJSON(401, gin.H{"error": "invalid user id in token"})
-				return
-			}
 
-			c.Set("userID", uid)
+			c.Set("userID", int64(raw))
 			c.Next()
 		} else {
 			c.AbortWithStatusJSON(401, gin.H{"error": "Invalid token claims"})
