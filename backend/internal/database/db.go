@@ -74,6 +74,7 @@ func pingWithRetry() error {
 	}
 	return fmt.Errorf("database unreachable after %d attempts", dbMaxStartupAttempts)
 }
+
 func monitorDatabase() {
 	ticker := time.NewTicker(dbHealthCheckInterval)
 	defer ticker.Stop()
