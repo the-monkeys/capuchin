@@ -5,25 +5,20 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"sync/atomic"
 	"time"
 
 	_ "github.com/lib/pq"
 )
 
-var (
-	DB        *sql.DB
-	dbHealthy atomic.Bool
-)
+var DB *sql.DB
 
 const (
-	dbMaxStartupAttempts  = 5
-	dbStartupBaseDelay    = 2 * time.Second
-	dbStartupMaxDelay     = 30 * time.Second
-	dbHealthCheckInterval = 10 * time.Second
+	dbMaxStartupAttempts = 5
+	dbStartupBaseDelay   = 2 * time.Second
+	dbStartupMaxDelay    = 30 * time.Second
 )
 
-func Connect() {
+func Connect() error {
 	connStr := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
 		config.Config.POSTGRES_HOST,
 		config.Config.POSTGRES_USER,
@@ -35,7 +30,7 @@ func Connect() {
 	var err error
 	DB, err = sql.Open("postgres", connStr)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to open database: %w", err)
 	}
 
 	// Conservative pool settings avoid exhausting DB connections in small deployments.
@@ -45,14 +40,12 @@ func Connect() {
 	DB.SetConnMaxLifetime(5 * time.Minute)
 
 	if err = pingWithRetry(); err != nil {
-		log.Printf("Database unavailable after %d attempts, starting degraded: %v", dbMaxStartupAttempts, err)
-		dbHealthy.Store(false)
-	} else {
-		log.Println("Database connection established")
-		dbHealthy.Store(true)
+		DB.Close()
+		return fmt.Errorf("database unavailable after %d attempts: %w", dbMaxStartupAttempts, err)
 	}
 
-	go monitorDatabase()
+	log.Println("Database connection established")
+	return nil
 }
 
 func pingWithRetry() error {
@@ -75,29 +68,7 @@ func pingWithRetry() error {
 	return fmt.Errorf("database unreachable after %d attempts", dbMaxStartupAttempts)
 }
 
-func monitorDatabase() {
-	ticker := time.NewTicker(dbHealthCheckInterval)
-	defer ticker.Stop()
-	for range ticker.C {
-		if err := DB.Ping(); err != nil {
-			if dbHealthy.CompareAndSwap(true, false) {
-				log.Printf("Database connection lost: %v", err)
-			}
-			continue
-		}
-		if dbHealthy.CompareAndSwap(false, true) {
-			log.Println("Database connection restored")
-		}
-	}
-}
-
-func IsDBHealthy() bool {
-	return dbHealthy.Load()
-}
-
 func InitSchema() {
-	// Schema is assumed to be pre-initialized (e.g., via CI/CD pipelines).
-	//TODO: remove after actual implementation
 	log.Println("Database connection initialized. Assuming schema is already present.")
 }
 

@@ -22,11 +22,6 @@ func AuthRequired() gin.HandlerFunc {
 		// Accept standard Authorization header format without forcing clients to preprocess it.
 		tokenStr = strings.TrimPrefix(tokenStr, "Bearer ")
 
-		if !database.IsDBHealthy() {
-			c.AbortWithStatusJSON(503, gin.H{"error": "authentication service unavailable"})
-			return
-		}
-
 		var exists bool
 		// Check revocation before claim extraction so logout takes effect immediately.
 		err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM blacklisted_tokens WHERE token=$1)", tokenStr).Scan(&exists)
