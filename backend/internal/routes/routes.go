@@ -4,8 +4,6 @@ import (
 	"capuchin/internal/database"
 	"capuchin/internal/handlers"
 	"capuchin/internal/middleware"
-	"context"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,20 +13,10 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler, todoHand
 	router.Use(middleware.ErrorHandler())
 
 	router.GET("/health", func(c *gin.Context) {
-		db := database.GetDB()
-		if db == nil {
-			c.JSON(503, gin.H{"status": "unavailable", "reason": "database not connected"})
+		if !database.IsHealthy() {
+			c.JSON(503, gin.H{"status": "unavailable"})
 			return
 		}
-
-		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
-		defer cancel()
-
-		if err := db.PingContext(ctx); err != nil {
-			c.JSON(503, gin.H{"status": "unavailable", "reason": "database unreachable"})
-			return
-		}
-
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 

@@ -53,6 +53,7 @@ func (s *authService) Signup(email, password string) (*models.User, error) {
 			return nil, ErrUserExists
 		}
 		logger.Error("auth.signup", "insert user failed", err)
+		database.HandleQueryError(err)
 		return nil, ErrDatabase
 	}
 
@@ -121,6 +122,7 @@ func (s *authService) Logout(tokenStr string) error {
 	_, err := database.GetDB().Exec("INSERT INTO blacklisted_tokens (token, expired_at) VALUES ($1, $2) ON CONFLICT (token) DO NOTHING", tokenStr, expTime)
 	if err != nil {
 		logger.Error("auth.logout", "insert blacklisted token failed", err)
+		database.HandleQueryError(err)
 		return ErrDatabase
 	}
 
