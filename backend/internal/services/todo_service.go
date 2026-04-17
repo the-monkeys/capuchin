@@ -28,7 +28,7 @@ func NewTodoService() TodoService {
 
 func (s *todoService) GetTodos(userID uuid.UUID) ([]models.Todo, error) {
 	// Scope every read by user_id so one user can never read another user's todos.
-	rows, err := database.DB.Query("SELECT id, item, completed FROM todos WHERE user_id=$1", userID)
+	rows, err := database.GetDB().Query("SELECT id, item, completed FROM todos WHERE user_id=$1", userID)
 	if err != nil {
 		return nil, ErrDatabase
 	}
@@ -59,7 +59,7 @@ func (s *todoService) AddTodo(userID uuid.UUID, item string, completed bool) (*m
 		Completed: completed,
 	}
 
-	_, err := database.DB.Exec("INSERT INTO todos (id, item, completed, user_id) VALUES ($1, $2, $3, $4)", t.ID, t.Item, t.Completed, t.UserID)
+	_, err := database.GetDB().Exec("INSERT INTO todos (id, item, completed, user_id) VALUES ($1, $2, $3, $4)", t.ID, t.Item, t.Completed, t.UserID)
 	if err != nil {
 		return nil, ErrDatabase
 	}
@@ -70,7 +70,7 @@ func (s *todoService) UpdateTodo(userID, todoID uuid.UUID, item *string, complet
 	if item == nil && completed == nil {
 		// Empty PATCH requests are treated as a read to keep the endpoint idempotent.
 		var t models.Todo
-		err := database.DB.QueryRow("SELECT id, item, completed FROM todos WHERE id=$1 AND user_id=$2", todoID, userID).Scan(&t.ID, &t.Item, &t.Completed)
+		err := database.GetDB().QueryRow("SELECT id, item, completed FROM todos WHERE id=$1 AND user_id=$2", todoID, userID).Scan(&t.ID, &t.Item, &t.Completed)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, ErrTodoNotFound
@@ -81,7 +81,7 @@ func (s *todoService) UpdateTodo(userID, todoID uuid.UUID, item *string, complet
 	}
 
 	var t models.Todo
-	err := database.DB.QueryRow(`
+	err := database.GetDB().QueryRow(`
 		UPDATE todos 
 		-- COALESCE preserves existing values when fields are omitted from PATCH payloads.
 		SET item = COALESCE($1, item), 
@@ -99,7 +99,7 @@ func (s *todoService) UpdateTodo(userID, todoID uuid.UUID, item *string, complet
 }
 
 func (s *todoService) DeleteTodo(userID, todoID uuid.UUID) error {
-	res, err := database.DB.Exec("DELETE FROM todos WHERE id=$1 AND user_id=$2", todoID, userID)
+	res, err := database.GetDB().Exec("DELETE FROM todos WHERE id=$1 AND user_id=$2", todoID, userID)
 	if err != nil {
 		return ErrDatabase
 	}
