@@ -14,6 +14,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler, todoHand
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
+
 	router.POST("/signup", authHandler.Signup)
 	router.POST("/login", authHandler.Login)
 
