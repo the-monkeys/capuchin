@@ -24,10 +24,10 @@ var dbHealthy atomic.Int32
 var degraded = make(chan struct{}, 1)
 
 const (
-	retryInterval    = 5 * time.Second
-	healthyInterval  = 30 * time.Second
-	degradedInterval = 5 * time.Second
-	pingTimeout      = 2 * time.Second
+	connectRetryInterval = 5 * time.Second
+	healthyPingInterval  = 30 * time.Second
+	degradedPingInterval = 5 * time.Second
+	pingTimeout          = 2 * time.Second
 )
 
 // GetDB returns the active connection pool, or nil if not yet connected.
@@ -49,9 +49,8 @@ func MarkDegraded() {
 	}
 }
 
-// Connect launches a background goroutine that establishes the DB connection
-// and retries on failure. Returns immediately — the server starts without
-// waiting for the DB.
+// Connect opens the connection pool once and launches a background goroutine
+// that pings until ready, retrying on failure. Returns immediately.
 func Connect(cfg config.AppConfig) {
 	connStr := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
@@ -62,29 +61,28 @@ func Connect(cfg config.AppConfig) {
 		cfg.POSTGRES_PORT,
 	)
 
+	// sql.Open only validates the DSN — allocate the pool once outside the retry loop.
+	conn, err := sql.Open("postgres", connStr)
+	if err != nil {
+		logger.Error("database", "failed to open connection pool", err)
+		return
+	}
+
+	conn.SetMaxOpenConns(25)
+	conn.SetMaxIdleConns(5)
+	conn.SetConnMaxLifetime(5 * time.Minute)
+
 	go func() {
 		for {
-			conn, err := sql.Open("postgres", connStr)
-			if err != nil {
-				logger.Error("database", "open failed", err)
-				time.Sleep(retryInterval)
-				continue
-			}
-
 			ctx, cancel := context.WithTimeout(context.Background(), pingTimeout)
-			err = conn.PingContext(ctx)
+			err := conn.PingContext(ctx)
 			cancel()
 
 			if err != nil {
-				logger.Error("database", "ping failed during connect", err)
-				_ = conn.Close()
-				time.Sleep(retryInterval)
+				logger.Error("database", "ping failed, retrying", err)
+				time.Sleep(connectRetryInterval)
 				continue
 			}
-
-			conn.SetMaxOpenConns(25)
-			conn.SetMaxIdleConns(5)
-			conn.SetConnMaxLifetime(5 * time.Minute)
 
 			db.Store(conn)
 			dbHealthy.Store(1)
@@ -98,13 +96,12 @@ func Connect(cfg config.AppConfig) {
 //   - healthy:  pings every 30s for observability
 //   - degraded: pings every 5s to detect recovery as soon as possible
 //
-// Switches to degraded mode when a ping fails or MarkDegraded() is called
-// (e.g. from a service that hit a query error). Backs off to healthy interval
-// once a ping succeeds again.
+// Switches to degraded mode when a ping fails or MarkDegraded() is called.
+// Backs off to healthy interval once a ping succeeds again.
 func StartHealthMonitor() {
 	go func() {
-		interval := healthyInterval
-		timer := time.NewTimer(interval)
+		isDegraded := false
+		timer := time.NewTimer(healthyPingInterval)
 		defer timer.Stop()
 
 		for {
@@ -112,29 +109,32 @@ func StartHealthMonitor() {
 			case <-degraded:
 				// A query error was reported — switch to fast polling immediately
 				// without waiting for the current timer to fire.
-				if !timer.Stop() {
-					select {
-					case <-timer.C:
-					default:
+				if !isDegraded {
+					if !timer.Stop() {
+						select {
+						case <-timer.C:
+						default:
+						}
 					}
+					isDegraded = true
+					timer.Reset(degradedPingInterval)
 				}
-				interval = degradedInterval
-				timer.Reset(interval)
 
 			case <-timer.C:
-				ping(interval == degradedInterval)
+				pingMonitor(isDegraded)
 				if IsHealthy() {
-					interval = healthyInterval
+					isDegraded = false
+					timer.Reset(healthyPingInterval)
 				} else {
-					interval = degradedInterval
+					isDegraded = true
+					timer.Reset(degradedPingInterval)
 				}
-				timer.Reset(interval)
 			}
 		}
 	}()
 }
 
-func ping(wasDegraded bool) {
+func pingMonitor(isDegraded bool) {
 	conn := GetDB()
 	if conn == nil {
 		dbHealthy.Store(0)
@@ -152,15 +152,15 @@ func ping(wasDegraded bool) {
 		return
 	}
 
-	if wasDegraded {
-		logger.Info("database.monitor", "DB recovered")
+	if isDegraded {
+		// Only log recovery and stats when coming back from a degraded state.
+		stats := conn.Stats()
+		logger.Info("database.monitor", fmt.Sprintf(
+			"DB recovered — open=%d idle=%d waitCount=%d",
+			stats.OpenConnections, stats.Idle, stats.WaitCount,
+		))
 	}
 	dbHealthy.Store(1)
-	stats := conn.Stats()
-	logger.Info("database.monitor", fmt.Sprintf(
-		"healthy — open=%d idle=%d waitCount=%d",
-		stats.OpenConnections, stats.Idle, stats.WaitCount,
-	))
 }
 
 // CleanupTokens deletes expired blacklisted tokens.
