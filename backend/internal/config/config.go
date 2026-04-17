@@ -17,8 +17,6 @@ var Config AppConfig
 var JWTKey []byte
 
 func init() {
-	loadEnvFile()
-
 	postgresPort, err := postgresPortFromEnv()
 	if err != nil {
 		log.Fatal(err)
