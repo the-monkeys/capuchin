@@ -5,75 +5,92 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"sync/atomic"
 	"time"
 
 	_ "github.com/lib/pq"
 )
 
+// DB is the shared connection pool. Nil until the background goroutine
+// successfully connects for the first time.
 var DB *sql.DB
 
-const (
-	dbMaxStartupAttempts = 5
-	dbStartupBaseDelay   = 2 * time.Second
-	dbStartupMaxDelay    = 30 * time.Second
-)
+// dbHealthy is 1 when DB is reachable, 0 otherwise.
+// Accessed exclusively via sync/atomic.
+var dbHealthy int32
 
-func Connect() error {
-	connStr := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
-		config.Config.POSTGRES_HOST,
-		config.Config.POSTGRES_USER,
-		config.Config.POSTGRES_PASSWORD,
-		config.Config.POSTGRES_DB,
-		config.Config.POSTGRES_PORT,
+const retryInterval = 5 * time.Second
+
+// Connect launches a background goroutine that attempts to open and ping
+// Postgres on a fixed interval. It returns immediately without blocking the
+// caller - the HTTP server starts before the DB is necessarily ready.
+// The backend process never exits due to DB unavailability.
+func Connect(cfg config.AppConfig) {
+	connStr := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
+		cfg.POSTGRES_HOST,
+		cfg.POSTGRES_USER,
+		cfg.POSTGRES_PASSWORD,
+		cfg.POSTGRES_DB,
+		cfg.POSTGRES_PORT,
 	)
 
-	var err error
-	DB, err = sql.Open("postgres", connStr)
-	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
-	}
-
-	// Conservative pool settings avoid exhausting DB connections in small deployments.
-	DB.SetMaxOpenConns(25)
-	DB.SetMaxIdleConns(5)
-	// Recycling connections helps recover from stale network state over long uptimes.
-	DB.SetConnMaxLifetime(5 * time.Minute)
-
-	if err = pingWithRetry(); err != nil {
-		DB.Close()
-		return fmt.Errorf("database unavailable after %d attempts: %w", dbMaxStartupAttempts, err)
-	}
-
-	log.Println("Database connection established")
-	return nil
-}
-
-func pingWithRetry() error {
-	delay := dbStartupBaseDelay
-	for attempt := 1; attempt <= dbMaxStartupAttempts; attempt++ {
-		if err := DB.Ping(); err == nil {
-			return nil
-		} else {
-			log.Printf("Database ping failed (attempt %d/%d): %v", attempt, dbMaxStartupAttempts, err)
-		}
-		if attempt < dbMaxStartupAttempts {
-			log.Printf("Retrying in %s...", delay)
-			time.Sleep(delay)
-			delay *= 2
-			if delay > dbStartupMaxDelay {
-				delay = dbStartupMaxDelay
+	go func() {
+		for {
+			db, err := sql.Open("postgres", connStr)
+			if err != nil {
+				log.Printf("database: connection open failed: %v - retry in %s", err, retryInterval)
+				atomic.StoreInt32(&dbHealthy, 0)
+				time.Sleep(retryInterval)
+				continue
 			}
+
+			if err := db.Ping(); err != nil {
+				log.Printf("database: ping failed: %v - retry in %s", err, retryInterval)
+				atomic.StoreInt32(&dbHealthy, 0)
+				_ = db.Close()
+				time.Sleep(retryInterval)
+				continue
+			}
+
+			db.SetMaxOpenConns(25)
+			db.SetMaxIdleConns(5)
+			db.SetConnMaxLifetime(5 * time.Minute)
+
+			DB = db
+			atomic.StoreInt32(&dbHealthy, 1)
+			log.Println("database: connection established")
+
+			watchConnection(db)
 		}
+	}()
+}
+
+// watchConnection pings the DB on a fixed interval until the connection is lost.
+func watchConnection(db *sql.DB) {
+	for {
+		time.Sleep(retryInterval)
+		if err := db.Ping(); err != nil {
+			log.Printf("database: connection lost: %v - reconnecting", err)
+			atomic.StoreInt32(&dbHealthy, 0)
+			_ = db.Close()
+			DB = nil
+			return
+		}
+		atomic.StoreInt32(&dbHealthy, 1)
 	}
-	return fmt.Errorf("database unreachable after %d attempts", dbMaxStartupAttempts)
 }
 
-func InitSchema() {
-	log.Println("Database connection initialized. Assuming schema is already present.")
+// IsHealthy reports whether the last DB ping succeeded.
+func IsHealthy() bool {
+	return atomic.LoadInt32(&dbHealthy) == 1
 }
 
+// CleanupTokens deletes expired blacklisted tokens.
 func CleanupTokens() error {
-	// Expired tokens can be dropped because JWT expiration already invalidates them.
-	_, err := DB.Exec("DELETE FROM blacklisted_tokens WHERE expired_at < $1", time.Now())
+	if DB == nil {
+		return fmt.Errorf("database: not connected")
+	}
+	_, err := DB.Exec("DELETE FROM blacklisted_tokens WHERE expired_at < NOW()")
 	return err
 }
