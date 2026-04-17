@@ -62,7 +62,7 @@ export const todosApi = {
     return normalise(await res.json())
   },
 
-  toggle: async (token: string, id: string, completed: boolean): Promise<void> => {
+  toggle: async (token: string, id: number, completed: boolean): Promise<void> => {
     const res = await fetch(`${BASE}/api/user/todo/${id}`, {
       method: "PATCH",
       headers: authHeaders(token),
@@ -71,7 +71,7 @@ export const todosApi = {
     if (!res.ok) throw new Error(`Failed to toggle todo: ${res.status}`)
   },
 
-  update: async (token: string, id: string, item: string): Promise<Todo> => {
+  update: async (token: string, id: number, item: string): Promise<Todo> => {
     const res = await fetch(`${BASE}/api/user/todo/${id}`, {
       method: "PATCH",
       headers: authHeaders(token),
@@ -81,7 +81,7 @@ export const todosApi = {
     return normalise(await res.json())
   },
 
-  delete: async (token: string, id: string): Promise<void> => {
+  delete: async (token: string, id: number): Promise<void> => {
     const res = await fetch(`${BASE}/api/user/todo/${id}`, {
       method: "DELETE",
       headers: authHeaders(token),

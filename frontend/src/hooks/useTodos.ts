@@ -4,9 +4,9 @@ import type { Todo, FilterType } from "@/types"
 
 const GUEST_KEY = "capuchin_guest_todos"
 let _guestIdCounter = 0
-const genId = () => {
+const genId = (): number => {
   _guestIdCounter -= 1
-  return String(_guestIdCounter)
+  return _guestIdCounter
 }
 
 const loadGuestTodos = (): Todo[] => {
@@ -69,7 +69,7 @@ export function useTodos(token: string | null, isAuthed: boolean) {
   )
 
   const toggleTodo = useCallback(
-    async (id: string, current: boolean) => {
+    async (id: number, current: boolean) => {
       if (!isAuthed) {
         updateGuest((prev) => prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)))
         return
@@ -85,7 +85,7 @@ export function useTodos(token: string | null, isAuthed: boolean) {
   )
 
   const deleteTodo = useCallback(
-    async (id: string) => {
+    async (id: number) => {
       if (!isAuthed) {
         updateGuest((prev) => prev.filter((t) => t.id !== id))
         return
@@ -102,7 +102,7 @@ export function useTodos(token: string | null, isAuthed: boolean) {
   )
 
   const updateTodo = useCallback(
-    async (id: string, item: string) => {
+    async (id: number, item: string) => {
       if (!item.trim()) return
       if (!isAuthed) {
         updateGuest((prev) => prev.map((t) => (t.id === id ? { ...t, item: item.trim() } : t)))
