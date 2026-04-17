@@ -1,41 +1,37 @@
-FROM golang:1.25.5-alpine AS deps
+FROM golang:1.26-alpine AS deps
 
 WORKDIR /app
 
-# Download dependencies
 COPY go.mod go.sum ./
 RUN go mod download
 
 # Build Stage
 FROM deps AS builder
 
-# Copy source code
 COPY . .
 
-# Build the application
 # CGO_ENABLED=0 ensures a statically linked binary
 RUN CGO_ENABLED=0 GOOS=linux go build -o server cmd/server/main.go
 
-# Development Stage
+# Development Stage - pinned air version for reproducible dev builds
 FROM deps AS dev
 
-RUN go install github.com/air-verse/air@latest
+RUN go install github.com/air-verse/air@v1.61.7
 
 CMD ["air", "-c", "air.toml"]
 
-
-# Final Stage
+# Final Stage - minimal image, non-root user for security
 FROM scratch
 
-# Set working directory to the app root
 WORKDIR /app
 
-# Copy the binary from the builder stage
+# Copy passwd so the non-root user exists in scratch
+COPY --from=builder /etc/passwd /etc/passwd
+
 COPY --from=builder /app/server ./
 
-# Expose the application port
 EXPOSE 8080
 
-# Run the application
-CMD ["./server"]
+USER nobody
 
+CMD ["./server"]
