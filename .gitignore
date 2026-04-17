@@ -97,3 +97,6 @@ crash.*.log
 # personal 
 docs/ideas.md
 backup/
+
+# Kiro IDE
+.kiro/
