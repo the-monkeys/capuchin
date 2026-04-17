@@ -3,6 +3,7 @@ package services
 import (
 	"capuchin/internal/config"
 	"capuchin/internal/database"
+	"capuchin/internal/logger"
 	"capuchin/internal/models"
 	"errors"
 	"strings"
@@ -51,6 +52,7 @@ func (s *authService) Signup(email, password string) (*models.User, error) {
 		if strings.Contains(errStr, "unique constraint") || strings.Contains(errStr, "duplicate key value") {
 			return nil, ErrUserExists
 		}
+		logger.Error("auth.signup", "insert user failed", err)
 		return nil, ErrDatabase
 	}
 
@@ -118,6 +120,7 @@ func (s *authService) Logout(tokenStr string) error {
 	// Idempotent logout avoids surfacing harmless duplicate requests as server errors.
 	_, err := database.GetDB().Exec("INSERT INTO blacklisted_tokens (token, expired_at) VALUES ($1, $2) ON CONFLICT (token) DO NOTHING", tokenStr, expTime)
 	if err != nil {
+		logger.Error("auth.logout", "insert blacklisted token failed", err)
 		return ErrDatabase
 	}
 

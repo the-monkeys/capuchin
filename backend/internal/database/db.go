@@ -2,9 +2,10 @@ package database
 
 import (
 	"capuchin/internal/config"
+	"capuchin/internal/logger"
+	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"sync/atomic"
 	"time"
 
@@ -15,25 +16,20 @@ import (
 // Uses atomic.Pointer to avoid data races on connect/reconnect.
 var db atomic.Pointer[sql.DB]
 
-// dbHealthy is 1 when the DB connection is established, 0 otherwise.
-var dbHealthy int32
-
-const retryInterval = 5 * time.Second
+const (
+	retryInterval   = 5 * time.Second
+	monitorInterval = 30 * time.Second
+	pingTimeout     = 2 * time.Second
+)
 
 // GetDB returns the active connection pool, or nil if not yet connected.
 func GetDB() *sql.DB {
 	return db.Load()
 }
 
-// IsHealthy reports whether the DB is currently reachable.
-func IsHealthy() bool {
-	return atomic.LoadInt32(&dbHealthy) == 1
-}
-
 // Connect launches a background goroutine that establishes the DB connection
 // and retries on failure. Returns immediately — the server starts without
-// waiting for the DB. Once connected, sql.DB manages the pool internally;
-// no polling loop is needed.
+// waiting for the DB. Once connected, sql.DB manages the pool internally.
 func Connect(cfg config.AppConfig) {
 	connStr := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
@@ -48,15 +44,18 @@ func Connect(cfg config.AppConfig) {
 		for {
 			conn, err := sql.Open("postgres", connStr)
 			if err != nil {
-				log.Printf("database: open failed: %v — retry in %s", err, retryInterval)
+				logger.Error("database", "open failed", err)
 				time.Sleep(retryInterval)
 				continue
 			}
 
-			if err := conn.Ping(); err != nil {
-				log.Printf("database: ping failed: %v — retry in %s", err, retryInterval)
+			ctx, cancel := context.WithTimeout(context.Background(), pingTimeout)
+			err = conn.PingContext(ctx)
+			cancel()
+
+			if err != nil {
+				logger.Error("database", "ping failed during connect", err)
 				_ = conn.Close()
-				atomic.StoreInt32(&dbHealthy, 0)
 				time.Sleep(retryInterval)
 				continue
 			}
@@ -66,9 +65,39 @@ func Connect(cfg config.AppConfig) {
 			conn.SetConnMaxLifetime(5 * time.Minute)
 
 			db.Store(conn)
-			atomic.StoreInt32(&dbHealthy, 1)
-			log.Println("database: connection established")
+			logger.Info("database", "connection established")
 			return
+		}
+	}()
+}
+
+// StartHealthMonitor pings the DB every 30s and logs a structured warning
+// when unreachable. Intended for observability only — does not gate requests.
+// Call after Connect().
+func StartHealthMonitor() {
+	go func() {
+		ticker := time.NewTicker(monitorInterval)
+		defer ticker.Stop()
+		for range ticker.C {
+			conn := GetDB()
+			if conn == nil {
+				logger.Warn("database.monitor", "DB not yet connected", nil)
+				continue
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), pingTimeout)
+			err := conn.PingContext(ctx)
+			cancel()
+
+			if err != nil {
+				logger.Warn("database.monitor", "DB unreachable", err)
+			} else {
+				stats := conn.Stats()
+				logger.Info("database.monitor", fmt.Sprintf(
+					"healthy — open=%d idle=%d waitCount=%d",
+					stats.OpenConnections, stats.Idle, stats.WaitCount,
+				))
+			}
 		}
 	}()
 }

@@ -2,6 +2,7 @@ package services
 
 import (
 	"capuchin/internal/database"
+	"capuchin/internal/logger"
 	"capuchin/internal/models"
 	"database/sql"
 	"errors"
@@ -30,6 +31,7 @@ func (s *todoService) GetTodos(userID uuid.UUID) ([]models.Todo, error) {
 	// Scope every read by user_id so one user can never read another user's todos.
 	rows, err := database.GetDB().Query("SELECT id, item, completed FROM todos WHERE user_id=$1", userID)
 	if err != nil {
+		logger.Error("todo.get", "query failed", err)
 		return nil, ErrDatabase
 	}
 	defer rows.Close()
@@ -45,6 +47,7 @@ func (s *todoService) GetTodos(userID uuid.UUID) ([]models.Todo, error) {
 	}
 
 	if err := rows.Err(); err != nil {
+		logger.Error("todo.get", "rows iteration failed", err)
 		return nil, ErrDatabase
 	}
 
@@ -61,6 +64,7 @@ func (s *todoService) AddTodo(userID uuid.UUID, item string, completed bool) (*m
 
 	_, err := database.GetDB().Exec("INSERT INTO todos (id, item, completed, user_id) VALUES ($1, $2, $3, $4)", t.ID, t.Item, t.Completed, t.UserID)
 	if err != nil {
+		logger.Error("todo.add", "insert failed", err)
 		return nil, ErrDatabase
 	}
 	return t, nil
@@ -75,6 +79,7 @@ func (s *todoService) UpdateTodo(userID, todoID uuid.UUID, item *string, complet
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, ErrTodoNotFound
 			}
+			logger.Error("todo.update", "read-only fetch failed", err)
 			return nil, ErrDatabase
 		}
 		return &t, nil
@@ -93,6 +98,7 @@ func (s *todoService) UpdateTodo(userID, todoID uuid.UUID, item *string, complet
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrTodoNotFound
 		}
+		logger.Error("todo.update", "update query failed", err)
 		return nil, ErrDatabase
 	}
 	return &t, nil
@@ -101,6 +107,7 @@ func (s *todoService) UpdateTodo(userID, todoID uuid.UUID, item *string, complet
 func (s *todoService) DeleteTodo(userID, todoID uuid.UUID) error {
 	res, err := database.GetDB().Exec("DELETE FROM todos WHERE id=$1 AND user_id=$2", todoID, userID)
 	if err != nil {
+		logger.Error("todo.delete", "delete query failed", err)
 		return ErrDatabase
 	}
 

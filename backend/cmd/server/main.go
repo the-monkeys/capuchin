@@ -4,10 +4,9 @@ import (
 	"capuchin/internal/config"
 	"capuchin/internal/database"
 	"capuchin/internal/handlers"
-	"capuchin/internal/middleware"
+	"capuchin/internal/logger"
 	"capuchin/internal/routes"
 	"capuchin/internal/services"
-	"log"
 	"net/http"
 	"time"
 
@@ -16,12 +15,13 @@ import (
 
 func main() {
 	database.Connect(config.Config)
+	database.StartHealthMonitor()
 
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour)
 		for range ticker.C {
 			if err := database.CleanupTokens(); err != nil {
-				log.Printf("token cleanup: error: %v", err)
+				logger.Error("token.cleanup", "failed to delete expired tokens", err)
 			}
 		}
 	}()
@@ -45,8 +45,6 @@ func main() {
 		}
 		c.Next()
 	})
-
-	r.Use(middleware.DBHealthCheck())
 
 	routes.SetupRoutes(r, authHandler, todoHandler)
 
