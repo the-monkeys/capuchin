@@ -19,6 +19,7 @@ func main() {
 
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
 		for range ticker.C {
 			if err := database.CleanupTokens(); err != nil {
 				log.Printf("token cleanup: error: %v", err)
