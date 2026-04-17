@@ -13,12 +13,15 @@ import (
 
 func main() {
 	// Bootstrapping schema at startup to keep local/dev deployments self-contained.
-	database.Connect()
+	if err := database.Connect(); err != nil {
+		log.Fatalf("Startup failed: %v", err)
+	}
 	database.InitSchema()
 
 	// Periodic cleanup prevents the revoked-token table from growing forever.
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
 		for range ticker.C {
 			if err := database.CleanupTokens(); err != nil {
 				log.Printf("Error cleaning up expired tokens: %v", err)
