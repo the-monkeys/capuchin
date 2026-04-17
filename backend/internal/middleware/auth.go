@@ -3,6 +3,7 @@ package middleware
 import (
 	"capuchin/internal/config"
 	"capuchin/internal/database"
+	"database/sql"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -24,7 +25,11 @@ func AuthRequired() gin.HandlerFunc {
 		var exists bool
 		// Check revocation before claim extraction so logout takes effect immediately.
 		err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM blacklisted_tokens WHERE token=$1)", tokenStr).Scan(&exists)
-		if err == nil && exists {
+		if err != nil && err != sql.ErrNoRows {
+			c.AbortWithStatusJSON(503, gin.H{"error": "authentication service unavailable"})
+			return
+		}
+		if exists {
 			c.AbortWithStatusJSON(401, gin.H{"error": "Token has been revoked"})
 			return
 		}
