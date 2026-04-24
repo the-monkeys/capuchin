@@ -32,7 +32,7 @@ EXPOSE 5173
 CMD ["npm", "run", "dev"]
 
 
-FROM nginx:alpine as prod
+FROM nginx:alpine AS prod
 
 # Copy the built assets from the builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
