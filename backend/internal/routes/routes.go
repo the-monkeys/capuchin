@@ -3,6 +3,7 @@ package routes
 import (
 	"capuchin/internal/handlers"
 	"capuchin/internal/middleware"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,7 +13,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler, todoHand
 	router.Use(middleware.ErrorHandler())
 
 	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
 	router.POST("/signup", authHandler.Signup)
