@@ -20,11 +20,11 @@ const (
 
 func Connect() error {
 	connStr := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
-		config.Config.POSTGRES_HOST,
-		config.Config.POSTGRES_USER,
-		config.Config.POSTGRES_PASSWORD,
-		config.Config.POSTGRES_DB,
-		config.Config.POSTGRES_PORT,
+		config.Config.PostgresHost,
+		config.Config.PostgresUser,
+		config.Config.PostgresPassword,
+		config.Config.PostgresDB,
+		config.Config.PostgresPort,
 	)
 
 	var err error
