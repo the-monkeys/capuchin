@@ -2,78 +2,173 @@ package database
 
 import (
 	"capuchin/internal/config"
+	"capuchin/internal/logger"
+	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"sync/atomic"
 	"time"
 
 	_ "github.com/lib/pq"
 )
 
-var DB *sql.DB
+// db is the shared connection pool. Access via GetDB().
+// Uses atomic.Pointer to avoid data races on connect/reconnect.
+var db atomic.Pointer[sql.DB]
+
+// dbHealthy is 1 when the last monitor ping succeeded, 0 otherwise.
+var dbHealthy atomic.Int32
+
+// degraded is a channel used to signal the monitor to switch to fast polling.
+// Buffered so callers never block.
+var degraded = make(chan struct{}, 1)
 
 const (
-	dbMaxStartupAttempts = 5
-	dbStartupBaseDelay   = 2 * time.Second
-	dbStartupMaxDelay    = 30 * time.Second
+	connectRetryInterval = 5 * time.Second
+	healthyPingInterval  = 30 * time.Second
+	degradedPingInterval = 5 * time.Second
+	pingTimeout          = 2 * time.Second
 )
 
-func Connect() error {
-	connStr := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
-		config.Config.POSTGRES_HOST,
-		config.Config.POSTGRES_USER,
-		config.Config.POSTGRES_PASSWORD,
-		config.Config.POSTGRES_DB,
-		config.Config.POSTGRES_PORT,
+// GetDB returns the active connection pool, or nil if not yet connected.
+func GetDB() *sql.DB {
+	return db.Load()
+}
+
+// IsHealthy reports the cached DB health state set by StartHealthMonitor.
+func IsHealthy() bool {
+	return dbHealthy.Load() == 1
+}
+
+// MarkDegraded signals the monitor to switch to fast polling immediately.
+// Safe to call from any goroutine; never blocks.
+func MarkDegraded() {
+	select {
+	case degraded <- struct{}{}:
+	default: // already signalled, drop
+	}
+}
+
+// Connect opens the connection pool once and launches a background goroutine
+// that pings until ready, retrying on failure. Returns immediately.
+func Connect(cfg config.AppConfig) {
+	connStr := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
+		cfg.POSTGRES_HOST,
+		cfg.POSTGRES_USER,
+		cfg.POSTGRES_PASSWORD,
+		cfg.POSTGRES_DB,
+		cfg.POSTGRES_PORT,
 	)
 
-	var err error
-	DB, err = sql.Open("postgres", connStr)
+	// sql.Open only validates the DSN — allocate the pool once outside the retry loop.
+	conn, err := sql.Open("postgres", connStr)
 	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
+		logger.Error("database", "failed to open connection pool", err)
+		return
 	}
 
-	// Conservative pool settings avoid exhausting DB connections in small deployments.
-	DB.SetMaxOpenConns(25)
-	DB.SetMaxIdleConns(5)
-	// Recycling connections helps recover from stale network state over long uptimes.
-	DB.SetConnMaxLifetime(5 * time.Minute)
+	conn.SetMaxOpenConns(25)
+	conn.SetMaxIdleConns(5)
+	conn.SetConnMaxLifetime(5 * time.Minute)
 
-	if err = pingWithRetry(); err != nil {
-		DB.Close()
-		return fmt.Errorf("database unavailable after %d attempts: %w", dbMaxStartupAttempts, err)
-	}
+	go func() {
+		for {
+			ctx, cancel := context.WithTimeout(context.Background(), pingTimeout)
+			err := conn.PingContext(ctx)
+			cancel()
 
-	log.Println("Database connection established")
-	return nil
+			if err != nil {
+				logger.Error("database", "ping failed, retrying", err)
+				time.Sleep(connectRetryInterval)
+				continue
+			}
+
+			db.Store(conn)
+			dbHealthy.Store(1)
+			logger.Info("database", "connection established")
+			return
+		}
+	}()
 }
 
-func pingWithRetry() error {
-	delay := dbStartupBaseDelay
-	for attempt := 1; attempt <= dbMaxStartupAttempts; attempt++ {
-		if err := DB.Ping(); err == nil {
-			return nil
-		} else {
-			log.Printf("Database ping failed (attempt %d/%d): %v", attempt, dbMaxStartupAttempts, err)
-		}
-		if attempt < dbMaxStartupAttempts {
-			log.Printf("Retrying in %s...", delay)
-			time.Sleep(delay)
-			delay *= 2
-			if delay > dbStartupMaxDelay {
-				delay = dbStartupMaxDelay
+// StartHealthMonitor runs a two-speed ping loop:
+//   - healthy:  pings every 30s for observability
+//   - degraded: pings every 5s to detect recovery as soon as possible
+//
+// Switches to degraded mode when a ping fails or MarkDegraded() is called.
+// Backs off to healthy interval once a ping succeeds again.
+func StartHealthMonitor() {
+	go func() {
+		isDegraded := false
+		timer := time.NewTimer(healthyPingInterval)
+		defer timer.Stop()
+
+		for {
+			select {
+			case <-degraded:
+				// A query error was reported — switch to fast polling immediately
+				// without waiting for the current timer to fire.
+				if !isDegraded {
+					if !timer.Stop() {
+						select {
+						case <-timer.C:
+						default:
+						}
+					}
+					isDegraded = true
+					timer.Reset(degradedPingInterval)
+				}
+
+			case <-timer.C:
+				pingMonitor(isDegraded)
+				if IsHealthy() {
+					isDegraded = false
+					timer.Reset(healthyPingInterval)
+				} else {
+					isDegraded = true
+					timer.Reset(degradedPingInterval)
+				}
 			}
 		}
+	}()
+}
+
+func pingMonitor(isDegraded bool) {
+	conn := GetDB()
+	if conn == nil {
+		dbHealthy.Store(0)
+		logger.Warn("database.monitor", "DB not yet connected", nil)
+		return
 	}
-	return fmt.Errorf("database unreachable after %d attempts", dbMaxStartupAttempts)
+
+	ctx, cancel := context.WithTimeout(context.Background(), pingTimeout)
+	err := conn.PingContext(ctx)
+	cancel()
+
+	if err != nil {
+		dbHealthy.Store(0)
+		logger.Warn("database.monitor", "DB unreachable", err)
+		return
+	}
+
+	if isDegraded {
+		// Only log recovery and stats when coming back from a degraded state.
+		stats := conn.Stats()
+		logger.Info("database.monitor", fmt.Sprintf(
+			"DB recovered — open=%d idle=%d waitCount=%d",
+			stats.OpenConnections, stats.Idle, stats.WaitCount,
+		))
+	}
+	dbHealthy.Store(1)
 }
 
-func InitSchema() {
-	log.Println("Database connection initialized. Assuming schema is already present.")
-}
-
+// CleanupTokens deletes expired blacklisted tokens.
 func CleanupTokens() error {
-	// Expired tokens can be dropped because JWT expiration already invalidates them.
-	_, err := DB.Exec("DELETE FROM blacklisted_tokens WHERE expired_at < $1", time.Now())
+	conn := GetDB()
+	if conn == nil {
+		return fmt.Errorf("database: not connected")
+	}
+	_, err := conn.Exec("DELETE FROM blacklisted_tokens WHERE expired_at < NOW()")
 	return err
 }

@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"capuchin/internal/database"
 	"capuchin/internal/handlers"
 	"capuchin/internal/middleware"
 
@@ -12,6 +13,10 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler, todoHand
 	router.Use(middleware.ErrorHandler())
 
 	router.GET("/health", func(c *gin.Context) {
+		if !database.IsHealthy() {
+			c.JSON(503, gin.H{"status": "unavailable"})
+			return
+		}
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 

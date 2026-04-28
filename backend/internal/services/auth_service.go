@@ -3,6 +3,7 @@ package services
 import (
 	"capuchin/internal/config"
 	"capuchin/internal/database"
+	"capuchin/internal/logger"
 	"capuchin/internal/models"
 	"errors"
 	"strings"
@@ -44,13 +45,15 @@ func (s *authService) Signup(email, password string) (*models.User, error) {
 		PasswordHash: string(hash),
 	}
 
-	_, err = database.DB.Exec("INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)", u.ID, u.Email, u.PasswordHash)
+	_, err = database.GetDB().Exec("INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)", u.ID, u.Email, u.PasswordHash)
 	if err != nil {
 		errStr := err.Error()
 		// Convert storage-specific duplicate key errors into a stable domain error for handlers.
 		if strings.Contains(errStr, "unique constraint") || strings.Contains(errStr, "duplicate key value") {
 			return nil, ErrUserExists
 		}
+		logger.Error("auth.signup", "insert user failed", err)
+		database.HandleQueryError(err)
 		return nil, ErrDatabase
 	}
 
@@ -59,7 +62,7 @@ func (s *authService) Signup(email, password string) (*models.User, error) {
 
 func (s *authService) Login(email, password string) (string, error) {
 	var u models.User
-	err := database.DB.QueryRow("SELECT id, email, password_hash FROM users WHERE email=$1", email).Scan(&u.ID, &u.Email, &u.PasswordHash)
+	err := database.GetDB().QueryRow("SELECT id, email, password_hash FROM users WHERE email=$1", email).Scan(&u.ID, &u.Email, &u.PasswordHash)
 	if err != nil {
 		// Use one response for unknown user and wrong password to avoid account enumeration.
 		return "", ErrInvalidCredentials
@@ -116,8 +119,10 @@ func (s *authService) Logout(tokenStr string) error {
 	}
 
 	// Idempotent logout avoids surfacing harmless duplicate requests as server errors.
-	_, err := database.DB.Exec("INSERT INTO blacklisted_tokens (token, expired_at) VALUES ($1, $2) ON CONFLICT (token) DO NOTHING", tokenStr, expTime)
+	_, err := database.GetDB().Exec("INSERT INTO blacklisted_tokens (token, expired_at) VALUES ($1, $2) ON CONFLICT (token) DO NOTHING", tokenStr, expTime)
 	if err != nil {
+		logger.Error("auth.logout", "insert blacklisted token failed", err)
+		database.HandleQueryError(err)
 		return ErrDatabase
 	}
 

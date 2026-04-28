@@ -1,15 +1,11 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
-
-	"github.com/joho/godotenv"
 )
 
 type AppConfig struct {
@@ -24,8 +20,6 @@ var Config AppConfig
 var JWTKey []byte
 
 func init() {
-	loadEnvFile()
-
 	postgresPort, err := postgresPortFromEnv()
 	if err != nil {
 		log.Fatal(err)
@@ -51,50 +45,6 @@ func init() {
 	JWTKey = []byte(jwtSecret)
 
 	log.Println("Configuration loaded successfully.")
-}
-
-func loadEnvFile() {
-	cwd, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("failed to determine current working directory: %v", err)
-	}
-
-	envPath, err := findEnvFile(cwd)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			log.Println("No .env file found in current or parent directories; using existing environment variables.")
-			return
-		}
-		log.Fatalf("failed to locate .env file: %v", err)
-	}
-
-	if err := godotenv.Load(envPath); err != nil {
-		log.Fatalf("failed to load .env file %q: %v", envPath, err)
-	}
-
-	log.Printf("Loaded environment variables from %s", envPath)
-}
-
-func findEnvFile(startDir string) (string, error) {
-	dir := startDir
-	for {
-		candidate := filepath.Join(dir, ".env")
-		info, err := os.Stat(candidate)
-		if err == nil && !info.IsDir() {
-			return candidate, nil
-		}
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			return "", err
-		}
-
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
-	}
-
-	return "", os.ErrNotExist
 }
 
 func postgresPortFromEnv() (int, error) {
